@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/custom_textfield.dart';
+import '../services/user_service.dart';
+import 'users/users_list_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,8 +14,11 @@ class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final UserService _userService = UserService();
+
   bool _isLoading = false;
   bool _rememberMe = false;
+
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
 
@@ -39,46 +44,83 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
-  // ---- LOGIQUE DE CONNEXION ----
+  // =============================================
+  //          LOGIQUE DE CONNEXION
+  // =============================================
   void _handleLogin() {
-    String email = _emailController.text.trim();
+    String username = _emailController.text.trim();
     String password = _passwordController.text.trim();
 
-    if (email.isEmpty || password.isEmpty) {
+    // Validation des champs vides
+    if (username.isEmpty || password.isEmpty) {
       _showSnackBar('Veuillez remplir tous les champs', isError: true);
       return;
     }
 
     setState(() => _isLoading = true);
 
-    // Simulation d'une requête serveur
+    // Simulation d'une requête serveur ( délai 2 sec )
     Future.delayed(const Duration(seconds: 2), () {
       setState(() => _isLoading = false);
 
-      // TODO: Remplacer par une vraie authentification
-      if (email == 'admin' && password == '1234') {
-        _showSnackBar('✅ Connexion réussie !', isError: false);
-        // Navigator.pushReplacement(context, 
-        //   MaterialPageRoute(builder: (_) => const HomeScreen()));
+      // ✅ Authentification via le UserService
+      final user = _userService.authenticate(username, password);
+
+      if (user != null) {
+        _showSnackBar('✅ Bienvenue ${user.fullName} !', isError: false);
+
+        // Redirection selon le rôle après un court délai
+        Future.delayed(const Duration(milliseconds: 800), () {
+          if (user.role == 'admin') {
+            // Admin → Gestion des utilisateurs
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const UsersListScreen(),
+              ),
+            );
+          } else {
+            // Caissier → (Interface de vente à l'étape 3)
+            _showSnackBar(
+              '🛒 Interface caisse bientôt disponible',
+              isError: false,
+            );
+          }
+        });
       } else {
-        _showSnackBar('❌ Identifiants incorrects', isError: true);
+        _showSnackBar(
+          '❌ Identifiants incorrects ou compte désactivé',
+          isError: true,
+        );
       }
     });
   }
 
+  // =============================================
+  //          SNACKBAR ( messages )
+  // =============================================
   void _showSnackBar(String message, {required bool isError}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(fontSize: 15)),
-        backgroundColor: isError ? Colors.red.shade600 : Colors.green.shade600,
+        content: Text(
+          message,
+          style: const TextStyle(fontSize: 15),
+        ),
+        backgroundColor:
+            isError ? Colors.red.shade600 : Colors.green.shade600,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         margin: const EdgeInsets.all(16),
         duration: const Duration(seconds: 2),
       ),
     );
   }
 
+  // =============================================
+  //               BUILD PRINCIPAL
+  // =============================================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -150,7 +192,9 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ---- WIDGET LOGO ----
+  // =============================================
+  //              WIDGET LOGO
+  // =============================================
   Widget _buildLogo() {
     return Container(
       width: 100,
@@ -174,7 +218,9 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // ---- CARTE PRINCIPALE ----
+  // =============================================
+  //           CARTE DE CONNEXION
+  // =============================================
   Widget _buildLoginCard() {
     return Container(
       padding: const EdgeInsets.all(28),
@@ -191,7 +237,7 @@ class _LoginScreenState extends State<LoginScreen>
       ),
       child: Column(
         children: [
-          // Titre du formulaire
+          // ---- Titre du formulaire ----
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -209,7 +255,7 @@ class _LoginScreenState extends State<LoginScreen>
           ),
           const SizedBox(height: 25),
 
-          // Champ Email / Utilisateur
+          // ---- Champ Utilisateur ----
           CustomTextField(
             controller: _emailController,
             label: 'Nom d\'utilisateur',
@@ -217,7 +263,7 @@ class _LoginScreenState extends State<LoginScreen>
             keyboardType: TextInputType.text,
           ),
 
-          // Champ Mot de passe
+          // ---- Champ Mot de passe ----
           CustomTextField(
             controller: _passwordController,
             label: 'Mot de passe',
@@ -227,7 +273,7 @@ class _LoginScreenState extends State<LoginScreen>
 
           const SizedBox(height: 8),
 
-          // Case "Se souvenir"
+          // ---- Se souvenir + Mot de passe oublié ----
           Row(
             children: [
               Checkbox(
@@ -250,7 +296,7 @@ class _LoginScreenState extends State<LoginScreen>
               const Spacer(),
               TextButton(
                 onPressed: () {
-                  // TODO: Mot de passe oublié
+                  // TODO : Mot de passe oublié
                 },
                 child: Text(
                   'Mot de passe oublié ?',
@@ -265,7 +311,7 @@ class _LoginScreenState extends State<LoginScreen>
 
           const SizedBox(height: 15),
 
-          // Bouton Connexion
+          // ---- Bouton Connexion ----
           SizedBox(
             width: double.infinity,
             height: 55,
