@@ -1,0 +1,50 @@
+name: stock_consultation
+description: Consultation de stock par code-barres
+
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.6
+  # Base de données locale
+  sqflite: ^2.3.3
+  path: ^1.9.0
+  # Scanner code-barres
+  mobile_scanner: ^5.2.3
+  # Excel import/export
+  excel: ^4.0.6
+  # Sélecteur de fichiers
+  file_picker: ^10.3.10
+  # Partage
+  share_plus: ^10.0.2
+  # HTTP pour Google Sheets
+  http: ^1.6.0
+  # Chemin système
+  path_provider: ^2.1.3
+  # Permissions caméra/stockage
+  permission_handler: ^11.3.1
+  # UUID
+  uuid: ^4.4.2
+  # Internationalisation
+  intl: ^0.19.0
+  # Provider state management
+  provider: ^6.1.2
+  # Animations
+  flutter_animate: ^4.5.0
+  shared_preferences: ^2.5.0 
+  
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
