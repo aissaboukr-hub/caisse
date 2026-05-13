@@ -3,6 +3,7 @@ import '../../models/user_model.dart';
 import '../../services/user_service.dart';
 import '../../widgets/user_card.dart';
 import 'user_form_screen.dart';
+import '../products/import_products_screen.dart'; // ← IMPORT AJOUTÉ
 
 class UsersListScreen extends StatefulWidget {
   const UsersListScreen({super.key});
@@ -31,7 +32,10 @@ class _UsersListScreenState extends State<UsersListScreen> {
     return users;
   }
 
-  // ---- NAVIGUER VERS LE FORMULAIRE ----
+  // =============================================
+  //       NAVIGUER VERS LE FORMULAIRE
+  // =============================================
+
   void _openForm({UserModel? user}) async {
     final result = await Navigator.push(
       context,
@@ -42,15 +46,48 @@ class _UsersListScreenState extends State<UsersListScreen> {
     if (result == true) setState(() {});
   }
 
-  // ---- CONFIRMER LA SUPPRESSION ----
+  // =============================================
+  //       NAVIGUER VERS L'IMPORT PRODUITS
+  // =============================================
+
+  void _openImportProducts() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const ImportProductsScreen(),
+      ),
+    );
+    if (result == true) {
+      setState(() {});
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('✅ Produits importés avec succès !'),
+            backgroundColor: Colors.green.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    }
+  }
+
+  // =============================================
+  //       CONFIRMER LA SUPPRESSION
+  // =============================================
+
   void _confirmDelete(UserModel user) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.red.shade400),
+            Icon(Icons.warning_amber_rounded,
+                color: Colors.red.shade400),
             const SizedBox(width: 10),
             const Text('Supprimer'),
           ],
@@ -72,11 +109,13 @@ class _UsersListScreenState extends State<UsersListScreen> {
               setState(() {});
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('🗑️ ${user.fullName} supprimé'),
+                  content:
+                      Text('🗑️ ${user.fullName} supprimé'),
                   backgroundColor: Colors.red.shade500,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
+                      borderRadius:
+                          BorderRadius.circular(12)),
                   margin: const EdgeInsets.all(16),
                 ),
               );
@@ -95,6 +134,10 @@ class _UsersListScreenState extends State<UsersListScreen> {
     );
   }
 
+  // =============================================
+  //               BUILD
+  // =============================================
+
   @override
   Widget build(BuildContext context) {
     final filteredUsers = _filteredUsers;
@@ -102,14 +145,18 @@ class _UsersListScreenState extends State<UsersListScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
 
-      // ---- APP BAR ----
+      // =============================================
+      //                APP BAR
+      // =============================================
+
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.indigo.shade700,
         foregroundColor: Colors.white,
         title: const Text(
           'Gestion des Utilisateurs',
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 19),
+          style: TextStyle(
+              fontWeight: FontWeight.w600, fontSize: 19),
         ),
         centerTitle: true,
         leading: IconButton(
@@ -117,15 +164,30 @@ class _UsersListScreenState extends State<UsersListScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.person_add_rounded),
-            tooltip: 'Ajouter un utilisateur',
-            onPressed: () => _openForm(),
+          // ---- BOUTON IMPORT PRODUITS ----
+          Tooltip(
+            message: 'Importer des produits',
+            child: IconButton(
+              icon: const Icon(Icons.download_rounded),
+              onPressed: _openImportProducts,
+            ),
+          ),
+
+          // ---- BOUTON AJOUTER UTILISATEUR ----
+          Tooltip(
+            message: 'Ajouter un utilisateur',
+            child: IconButton(
+              icon: const Icon(Icons.person_add_rounded),
+              onPressed: () => _openForm(),
+            ),
           ),
         ],
       ),
 
-      // ---- CORPS ----
+      // =============================================
+      //                 CORPS
+      // =============================================
+
       body: Column(
         children: [
           // ---- HEADER STATISTIQUES ----
@@ -144,7 +206,8 @@ class _UsersListScreenState extends State<UsersListScreen> {
             child: filteredUsers.isEmpty
                 ? _buildEmptyState()
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: filteredUsers.length,
                     itemBuilder: (context, index) {
                       final user = filteredUsers[index];
@@ -153,7 +216,8 @@ class _UsersListScreenState extends State<UsersListScreen> {
                         onEdit: () => _openForm(user: user),
                         onDelete: () => _confirmDelete(user),
                         onToggleStatus: () {
-                          _userService.toggleUserStatus(user.id);
+                          _userService
+                              .toggleUserStatus(user.id);
                           setState(() {});
                         },
                       );
@@ -163,7 +227,10 @@ class _UsersListScreenState extends State<UsersListScreen> {
         ],
       ),
 
-      // ---- FAB ----
+      // =============================================
+      //             FLOTTEUR (FAB)
+      // =============================================
+
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openForm(),
         backgroundColor: Colors.indigo.shade700,
@@ -178,13 +245,19 @@ class _UsersListScreenState extends State<UsersListScreen> {
     );
   }
 
-  // ---- WIDGET STATISTIQUES ----
+  // =============================================
+  //        WIDGET STATISTIQUES (HEADER)
+  // =============================================
+
   Widget _buildStatsHeader() {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.indigo.shade700, Colors.indigo.shade500],
+          colors: [
+            Colors.indigo.shade700,
+            Colors.indigo.shade500
+          ],
         ),
       ),
       child: Row(
@@ -209,7 +282,8 @@ class _UsersListScreenState extends State<UsersListScreen> {
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon) {
+  Widget _buildStatItem(
+      String label, String value, IconData icon) {
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -243,7 +317,10 @@ class _UsersListScreenState extends State<UsersListScreen> {
     );
   }
 
-  // ---- BARRE DE RECHERCHE ----
+  // =============================================
+  //           BARRE DE RECHERCHE
+  // =============================================
+
   Widget _buildSearchBar() {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -260,14 +337,18 @@ class _UsersListScreenState extends State<UsersListScreen> {
       ),
       child: TextField(
         controller: _searchController,
-        onChanged: (value) => setState(() => _searchQuery = value),
+        onChanged: (value) =>
+            setState(() => _searchQuery = value),
         decoration: InputDecoration(
           hintText: 'Rechercher un utilisateur...',
-          hintStyle: TextStyle(color: Colors.grey.shade400),
-          prefixIcon: Icon(Icons.search, color: Colors.indigo.shade300),
+          hintStyle:
+              TextStyle(color: Colors.grey.shade400),
+          prefixIcon: Icon(Icons.search,
+              color: Colors.indigo.shade300),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
-                  icon: Icon(Icons.clear, color: Colors.grey.shade400),
+                  icon: Icon(Icons.clear,
+                      color: Colors.grey.shade400),
                   onPressed: () {
                     _searchController.clear();
                     setState(() => _searchQuery = '');
@@ -280,41 +361,54 @@ class _UsersListScreenState extends State<UsersListScreen> {
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16, vertical: 14),
         ),
       ),
     );
   }
 
-  // ---- FILTRES PAR RÔLE ----
+  // =============================================
+  //          FILTRES PAR RÔLE
+  // =============================================
+
   Widget _buildFilterChips() {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Row(
         children: [
-          _buildFilterChip('all', 'Tous', Icons.people),
+          _buildFilterChip(
+              'all', 'Tous', Icons.people),
           const SizedBox(width: 8),
-          _buildFilterChip('admin', 'Admins', Icons.shield),
+          _buildFilterChip(
+              'admin', 'Admins', Icons.shield),
           const SizedBox(width: 8),
-          _buildFilterChip('caissier', 'Caissiers', Icons.shopping_cart),
+          _buildFilterChip('caissier', 'Caissiers',
+              Icons.shopping_cart),
         ],
       ),
     );
   }
 
-  Widget _buildFilterChip(String value, String label, IconData icon) {
+  Widget _buildFilterChip(
+      String value, String label, IconData icon) {
     final isSelected = _filterRole == value;
     return GestureDetector(
-      onTap: () => setState(() => _filterRole = value),
+      onTap: () =>
+          setState(() => _filterRole = value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(
+            horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.indigo.shade600 : Colors.white,
+          color: isSelected
+              ? Colors.indigo.shade600
+              : Colors.white,
           borderRadius: BorderRadius.circular(25),
           border: Border.all(
-            color: isSelected ? Colors.indigo.shade600 : Colors.grey.shade300,
+            color: isSelected
+                ? Colors.indigo.shade600
+                : Colors.grey.shade300,
           ),
         ),
         child: Row(
@@ -322,14 +416,18 @@ class _UsersListScreenState extends State<UsersListScreen> {
           children: [
             Icon(icon,
                 size: 16,
-                color: isSelected ? Colors.white : Colors.grey.shade600),
+                color: isSelected
+                    ? Colors.white
+                    : Colors.grey.shade600),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white : Colors.grey.shade600,
+                color: isSelected
+                    ? Colors.white
+                    : Colors.grey.shade600,
               ),
             ),
           ],
@@ -338,7 +436,10 @@ class _UsersListScreenState extends State<UsersListScreen> {
     );
   }
 
-  // ---- ÉTAT VIDE ----
+  // =============================================
+  //              ÉTAT VIDE
+  // =============================================
+
   Widget _buildEmptyState() {
     return Center(
       child: Column(
@@ -357,8 +458,10 @@ class _UsersListScreenState extends State<UsersListScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Essayez une autre recherche ou ajoutez un utilisateur',
-            style: TextStyle(color: Colors.grey.shade400),
+            'Essayez une autre recherche\n'
+            'ou ajoutez un utilisateur',
+            style:
+                TextStyle(color: Colors.grey.shade400),
             textAlign: TextAlign.center,
           ),
         ],

@@ -28,12 +28,13 @@ class ProductService extends ChangeNotifier {
         final List<dynamic> decoded = jsonDecode(data);
         _products = decoded.map((m) => ProductModel.fromMap(m)).toList();
       } else {
-        _products = _getDefaultProducts();
+        // ⚠️ PLUS DE PRODUITS PAR DÉFAUT — Liste vide
+        _products = [];
         await _saveProducts();
       }
     } catch (e) {
       debugPrint('Erreur chargement produits: $e');
-      _products = _getDefaultProducts();
+      _products = [];
     }
 
     _isLoaded = true;
@@ -58,6 +59,7 @@ class ProductService extends ChangeNotifier {
 
   List<ProductModel> get products => List.unmodifiable(_products);
   bool get isLoaded => _isLoaded;
+  bool get isEmpty => _products.isEmpty;
 
   List<String> get categories {
     final cats = _products.map((p) => p.category).toSet().toList();
@@ -98,7 +100,7 @@ class ProductService extends ChangeNotifier {
       return _products.firstWhere(
         (p) =>
             p.barcode != null &&
-            p.barcode == barcode &&
+            p.barcode!.trim() == barcode.trim() &&
             p.isAvailable,
       );
     } catch (_) {
@@ -107,7 +109,7 @@ class ProductService extends ChangeNotifier {
   }
 
   // =============================================
-  //              CRUD
+  //              CRUD SIMPLE
   // =============================================
 
   bool addProduct(ProductModel product) {
@@ -139,7 +141,6 @@ class ProductService extends ChangeNotifier {
     return true;
   }
 
-  /// Diminuer le stock après une vente
   void decreaseStock(String productId, int quantity) {
     final index = _products.indexWhere((p) => p.id == productId);
     if (index != -1) {
@@ -152,9 +153,58 @@ class ProductService extends ChangeNotifier {
     }
   }
 
-  /// Réinitialiser les produits par défaut
-  Future<void> resetToDefaults() async {
-    _products = _getDefaultProducts();
+  // =============================================
+  //        IMPORT EN MASSE (NOUVEAU)
+  // =============================================
+
+  /// Importer une liste de produits
+  /// [replaceAll] = true → remplace tout, false → ajoute
+  /// Retourne le nombre de produits ajoutés
+  Future<int> importProducts(
+    List<ProductModel> newProducts, {
+    bool replaceAll = false,
+  }) async {
+    if (replaceAll) {
+      _products.clear();
+    }
+
+    int added = 0;
+    int skipped = 0;
+
+    for (final product in newProducts) {
+      // Ignorer les lignes vides / sans nom
+      if (product.name.trim().isEmpty) continue;
+
+      // Vérifier si le produit existe déjà (par nom)
+      final exists = _products.any(
+        (p) => p.name.toLowerCase().trim() == product.name.toLowerCase().trim(),
+      );
+
+      if (exists) {
+        skipped++;
+        continue;
+      }
+
+      // Attribuer un ID si manquant
+      if (product.id.isEmpty) {
+        product.id = generateId();
+      }
+
+      _products.add(product);
+      added++;
+    }
+
+    await _saveProducts();
+    notifyListeners();
+
+    debugPrint(
+        'Import terminé: $added ajoutés, $skipped ignorés (doublons)');
+    return added;
+  }
+
+  /// Supprimer tous les produits
+  Future<void> clearAllProducts() async {
+    _products.clear();
     await _saveProducts();
     notifyListeners();
   }
@@ -162,165 +212,5 @@ class ProductService extends ChangeNotifier {
   /// Générer un ID unique
   String generateId() {
     return DateTime.now().millisecondsSinceEpoch.toString();
-  }
-
-  // =============================================
-  //       PRODUITS PAR DÉFAUT (avec codes-barres)
-  // =============================================
-
-  List<ProductModel> _getDefaultProducts() {
-    return [
-      // ───────── BOISSONS ─────────
-      ProductModel(
-        id: '1',
-        name: 'Coca-Cola 1L',
-        category: 'Boissons',
-        price: 3500,
-        stock: 50,
-        unit: 'piece',
-        barcode: '5449000000996',
-      ),
-      ProductModel(
-        id: '2',
-        name: 'Fanta Orange 1L',
-        category: 'Boissons',
-        price: 3500,
-        stock: 40,
-        unit: 'piece',
-        barcode: '5449000011602',
-      ),
-      ProductModel(
-        id: '3',
-        name: 'Eau Pure 1.5L',
-        category: 'Boissons',
-        price: 1500,
-        stock: 100,
-        unit: 'piece',
-        barcode: '6111028000012',
-      ),
-      ProductModel(
-        id: '4',
-        name: 'Jus de Fruit 50cl',
-        category: 'Boissons',
-        price: 2500,
-        stock: 30,
-        unit: 'piece',
-        barcode: '6111028000029',
-      ),
-      ProductModel(
-        id: '5',
-        name: 'Bière Primus',
-        category: 'Boissons',
-        price: 4000,
-        stock: 60,
-        unit: 'piece',
-        barcode: '6111028000036',
-      ),
-
-      // ───────── ALIMENTATION ─────────
-      ProductModel(
-        id: '6',
-        name: 'Pain Complet',
-        category: 'Alimentation',
-        price: 2000,
-        stock: 25,
-        unit: 'piece',
-        barcode: '6111028000043',
-      ),
-      ProductModel(
-        id: '7',
-        name: 'Riz 5Kg',
-        category: 'Alimentation',
-        price: 12000,
-        stock: 20,
-        unit: 'piece',
-        barcode: '6111028000050',
-      ),
-      ProductModel(
-        id: '8',
-        name: 'Huile Végétale 2L',
-        category: 'Alimentation',
-        price: 8500,
-        stock: 15,
-        unit: 'piece',
-        barcode: '6111028000067',
-      ),
-      ProductModel(
-        id: '9',
-        name: 'Farine de Maïs 1Kg',
-        category: 'Alimentation',
-        price: 3000,
-        stock: 35,
-        unit: 'piece',
-        barcode: '6111028000074',
-      ),
-      ProductModel(
-        id: '10',
-        name: 'Sucre 1Kg',
-        category: 'Alimentation',
-        price: 2500,
-        stock: 40,
-        unit: 'piece',
-        barcode: '6111028000081',
-      ),
-
-      // ───────── HYGIÈNE ─────────
-      ProductModel(
-        id: '11',
-        name: 'Savon Dove',
-        category: 'Hygiène',
-        price: 4500,
-        stock: 20,
-        unit: 'piece',
-        barcode: '8710908382155',
-      ),
-      ProductModel(
-        id: '12',
-        name: 'Dentifrice Signal',
-        category: 'Hygiène',
-        price: 3000,
-        stock: 18,
-        unit: 'piece',
-        barcode: '8710908382162',
-      ),
-      ProductModel(
-        id: '13',
-        name: 'Shampooing 400ml',
-        category: 'Hygiène',
-        price: 5500,
-        stock: 12,
-        unit: 'piece',
-        barcode: '8710908382179',
-      ),
-      ProductModel(
-        id: '14',
-        name: 'Papier Toilette x4',
-        category: 'Hygiène',
-        price: 6000,
-        stock: 22,
-        unit: 'piece',
-        barcode: '8710908382186',
-      ),
-
-      // ───────── CONFISERIE ─────────
-      ProductModel(
-        id: '15',
-        name: 'Chocolat Dairy Milk',
-        category: 'Confiserie',
-        price: 3000,
-        stock: 30,
-        unit: 'piece',
-        barcode: '7622210449283',
-      ),
-      ProductModel(
-        id: '16',
-        name: 'Biscuit LU Petit',
-        category: 'Confiserie',
-        price: 2000,
-        stock: 45,
-        unit: 'piece',
-        barcode: '7622210449290',
-      ),
-    ];
   }
 }
