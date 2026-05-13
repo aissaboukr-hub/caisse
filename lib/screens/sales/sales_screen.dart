@@ -4,6 +4,7 @@ import '../../models/product_model.dart';
 import '../../services/product_service.dart';
 import '../../services/cart_service.dart';
 import '../../services/sale_service.dart';
+import 'barcode_scanner_screen.dart';
 
 class SalesScreen extends StatefulWidget {
   final String cashierName;
@@ -40,10 +41,8 @@ class _SalesScreenState extends State<SalesScreen> {
     setState(() {
       _searchQuery = query;
       if (query.isNotEmpty) {
-        _searchResults = _productService
-            .getProducts(search: query)
-            .take(8)
-            .toList();
+        _searchResults =
+            _productService.getProducts(search: query).take(8).toList();
         _showSearchResults = true;
       } else {
         _searchResults = [];
@@ -113,7 +112,6 @@ class _SalesScreenState extends State<SalesScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Nom du produit
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
@@ -142,8 +140,6 @@ class _SalesScreenState extends State<SalesScreen> {
               ),
             ),
             const SizedBox(height: 16),
-
-            // Champ quantité
             TextField(
               controller: qtyController,
               keyboardType: TextInputType.number,
@@ -193,7 +189,6 @@ class _SalesScreenState extends State<SalesScreen> {
                 return;
               }
               Navigator.pop(ctx);
-              // Ajouter la quantité exacte
               for (int i = 0; i < qty; i++) {
                 _cartService.addProduct(product);
               }
@@ -215,14 +210,53 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   // =============================================
-  //        SIMULATION SCAN CODE-BARRES
+  //     SCANNER CODE-BARRES (VRAI SCANNER)
   // =============================================
 
-  void _simulateBarcodeScan() {
-    // Simulation : en vrai, on utiliserait un package comme
-    // flutter_barcode_scanner ou mobile_scanner
-    final TextEditingController barcodeController = TextEditingController();
+  Future<void> _openScanner() async {
+    _searchFocus.unfocus();
+    setState(() => _showSearchResults = false);
 
+    try {
+      final String? scannedCode = await Navigator.push<String>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const BarcodeScannerScreen(),
+        ),
+      );
+
+      if (scannedCode != null && scannedCode.isNotEmpty) {
+        _processScannedCode(scannedCode);
+      }
+    } catch (e) {
+      _showSnackBar('❌ Erreur du scanner: $e', isError: true);
+    }
+  }
+
+  void _processScannedCode(String code) {
+    // 1. Rechercher par code-barres exact
+    ProductModel? product = _productService.findByBarcode(code);
+
+    // 2. Si pas trouvé par barcode, chercher par ID
+    product ??= _productService.products
+        .where((p) => p.id == code)
+        .firstOrNull;
+
+    // 3. Si toujours pas trouvé, chercher par nom
+    product ??= _productService.getProducts(search: code).firstOrNull;
+
+    if (product != null) {
+      _addToCart(product);
+      _showSnackBar(
+        '✅ "${product.name}" ajouté via scanner',
+        isError: false,
+      );
+    } else {
+      _showProductNotFoundDialog(code);
+    }
+  }
+
+  void _showProductNotFoundDialog(String barcode) {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -231,71 +265,61 @@ class _SalesScreenState extends State<SalesScreen> {
         ),
         title: Row(
           children: [
-            Icon(Icons.qr_code_scanner, color: Colors.indigo.shade600),
+            Icon(Icons.search_off, color: Colors.orange.shade600),
             const SizedBox(width: 10),
-            const Text('Scanner', style: TextStyle(fontSize: 18)),
+            const Expanded(
+              child:
+                  Text('Produit introuvable', style: TextStyle(fontSize: 18)),
+            ),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Zone de scan visuelle
             Container(
-              height: 120,
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                    color: Colors.indigo.shade200, width: 2),
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.shade200),
               ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.qr_code_scanner,
-                        size: 50, color: Colors.indigo.shade300),
-                    const SizedBox(height: 8),
-                    Text('Scannez ou entrez le code-barres',
-                        style: TextStyle(color: Colors.grey.shade500)),
-                  ],
-                ),
+              child: Row(
+                children: [
+                  Icon(Icons.qr_code, color: Colors.orange.shade700),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Code: $barcode',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.orange.shade800,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: barcodeController,
-              autofocus: true,
-              decoration: InputDecoration(
-                labelText: 'Code-barres',
-                hintText: 'Ex: 123456789',
-                prefixIcon: Icon(Icons.barcode_reader,
-                    color: Colors.indigo.shade400),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide:
-                      BorderSide(color: Colors.indigo.shade400, width: 2),
-                ),
-              ),
+            const SizedBox(height: 12),
+            const Text(
+              'Aucun produit n\'est associé à ce code-barres.\n'
+              'Voulez-vous le rechercher par nom ?',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontSize: 14),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Annuler',
-                style: TextStyle(color: Colors.grey.shade600)),
+            child:
+                Text('Ignorer', style: TextStyle(color: Colors.grey.shade600)),
           ),
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(ctx);
-              final code = barcodeController.text.trim();
-              if (code.isNotEmpty) {
-                _searchByBarcode(code);
-              }
+              _searchController.text = barcode;
+              _onSearchChanged(barcode);
             },
             icon: const Icon(Icons.search, size: 18),
             label: const Text('Rechercher'),
@@ -312,22 +336,6 @@ class _SalesScreenState extends State<SalesScreen> {
     );
   }
 
-  void _searchByBarcode(String code) {
-    // Rechercher par ID ou nom (simulation)
-    final product = _productService.products.firstWhere(
-      (p) => p.id == code || p.name.toLowerCase().contains(code.toLowerCase()),
-      orElse: () => ProductModel(
-          id: '', name: '', category: '', price: 0, stock: 0),
-    );
-
-    if (product.id.isNotEmpty) {
-      _addToCart(product);
-    } else {
-      _showSnackBar('❌ Produit non trouvé pour le code: $code',
-          isError: true);
-    }
-  }
-
   // =============================================
   //       IMPRIMER / FINALISER LA VENTE
   // =============================================
@@ -338,12 +346,18 @@ class _SalesScreenState extends State<SalesScreen> {
       return;
     }
 
+    final TextEditingController amountController = TextEditingController();
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) {
         return StatefulBuilder(
           builder: (ctx, setDialogState) {
+            final total = _cartService.totalAmount;
+            final entered = double.tryParse(amountController.text) ?? 0;
+            final change = entered - total;
+
             return Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(24),
@@ -354,7 +368,7 @@ class _SalesScreenState extends State<SalesScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // ---- EN-TÊTE ----
+                      // ---- EN-TÊTE TICKET ----
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -397,8 +411,7 @@ class _SalesScreenState extends State<SalesScreen> {
                         decoration: BoxDecoration(
                           color: Colors.grey.shade50,
                           borderRadius: BorderRadius.circular(14),
-                          border:
-                              Border.all(color: Colors.grey.shade200),
+                          border: Border.all(color: Colors.grey.shade200),
                         ),
                         child: Column(
                           children: [
@@ -423,7 +436,7 @@ class _SalesScreenState extends State<SalesScreen> {
                                 ),
                                 Expanded(
                                   flex: 2,
-                                  child: Text('PRIX',
+                                  child: Text('MONTANT',
                                       textAlign: TextAlign.right,
                                       style: TextStyle(
                                           fontWeight: FontWeight.bold,
@@ -443,16 +456,15 @@ class _SalesScreenState extends State<SalesScreen> {
                                   children: [
                                     Expanded(
                                       flex: 1,
-                                      child: Text(
-                                          '${item.quantity}',
+                                      child: Text('${item.quantity}',
                                           style: const TextStyle(
                                               fontWeight: FontWeight.w600)),
                                     ),
                                     Expanded(
                                       flex: 3,
                                       child: Text(item.product.name,
-                                          style: const TextStyle(
-                                              fontSize: 14)),
+                                          style:
+                                              const TextStyle(fontSize: 14)),
                                     ),
                                     Expanded(
                                       flex: 2,
@@ -466,16 +478,14 @@ class _SalesScreenState extends State<SalesScreen> {
                               );
                             })),
 
-                            Divider(color: Colors.grey.shade300),
+                            Divider(color: Colors.grey.shade300, thickness: 2),
 
                             // Total
                             Row(
                               children: [
                                 const Expanded(
                                   flex: 1,
-                                  child: Text('',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold)),
+                                  child: Text(''),
                                 ),
                                 const Expanded(
                                   flex: 3,
@@ -505,6 +515,7 @@ class _SalesScreenState extends State<SalesScreen> {
 
                       // ---- MONTANT REÇU ----
                       TextField(
+                        controller: amountController,
                         keyboardType: TextInputType.number,
                         autofocus: true,
                         style: const TextStyle(
@@ -512,18 +523,17 @@ class _SalesScreenState extends State<SalesScreen> {
                         inputFormatters: [
                           FilteringTextInputFormatter.digitsOnly
                         ],
+                        onChanged: (_) => setDialogState(() {}),
                         decoration: InputDecoration(
                           labelText: 'Montant reçu (FC)',
-                          labelStyle:
-                              TextStyle(color: Colors.grey.shade600),
+                          labelStyle: TextStyle(color: Colors.grey.shade600),
                           prefixIcon: Icon(Icons.payments_outlined,
                               color: Colors.indigo.shade400),
                           filled: true,
                           fillColor: Colors.white,
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide:
-                                BorderSide(color: Colors.grey.shade300),
+                            borderSide: BorderSide(color: Colors.grey.shade300),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -531,48 +541,93 @@ class _SalesScreenState extends State<SalesScreen> {
                                 color: Colors.indigo.shade400, width: 2),
                           ),
                         ),
-                        onChanged: (value) {
-                          setDialogState(() {});
-                        },
-                        onSubmitted: (value) {
-                          final amount =
-                              double.tryParse(value) ?? 0;
-                          if (amount >= _cartService.totalAmount) {
-                            Navigator.pop(ctx);
-                            _processSale(amount);
-                          }
-                        },
                       ),
+                      const SizedBox(height: 12),
+
+                      // ---- MONNAIE ----
+                      if (entered > 0)
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: change >= 0
+                                ? Colors.green.shade50
+                                : Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: change >= 0
+                                  ? Colors.green.shade200
+                                  : Colors.red.shade200,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                change >= 0
+                                    ? Icons.check_circle_outline
+                                    : Icons.error_outline,
+                                color: change >= 0
+                                    ? Colors.green.shade700
+                                    : Colors.red.shade700,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                change >= 0
+                                    ? 'Monnaie: ${change.toStringAsFixed(0)} FC'
+                                    : 'Manque: ${(total - entered).toStringAsFixed(0)} FC',
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color: change >= 0
+                                      ? Colors.green.shade700
+                                      : Colors.red.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                      // ---- RACCOURCIS MONTANTS ----
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _buildQuickAmountButtons(
+                            total, amountController, setDialogState),
+                      ),
+
                       const SizedBox(height: 24),
 
                       // ---- BOUTONS ----
                       Row(
                         children: [
                           Expanded(
-                            child: OutlinedButton.icon(
+                            child: OutlinedButton(
                               onPressed: () => Navigator.pop(ctx),
-                              icon: const Icon(Icons.close, size: 18),
-                              label: const Text('Annuler'),
                               style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 14),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
-                                side:
-                                    BorderSide(color: Colors.grey.shade300),
+                                side: BorderSide(color: Colors.grey.shade300),
                               ),
+                              child: Text('Annuler',
+                                  style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontWeight: FontWeight.w600)),
                             ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             flex: 2,
                             child: ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.pop(ctx);
-                                _processSale(
-                                    _cartService.totalAmount);
-                              },
+                              onPressed: change >= 0 && entered > 0
+                                  ? () {
+                                      Navigator.pop(ctx);
+                                      _processSale(entered);
+                                    }
+                                  : null,
                               icon: const Icon(Icons.print, size: 22),
                               label: const Text(
                                 'IMPRIMER',
@@ -583,8 +638,9 @@ class _SalesScreenState extends State<SalesScreen> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green.shade600,
                                 foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                    vertical: 14),
+                                disabledBackgroundColor: Colors.grey.shade300,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(14),
                                 ),
@@ -603,6 +659,46 @@ class _SalesScreenState extends State<SalesScreen> {
         );
       },
     );
+  }
+
+  List<Widget> _buildQuickAmountButtons(
+    double total,
+    TextEditingController controller,
+    StateSetter setDialogState,
+  ) {
+    final quickAmounts = <int>[];
+    final rounded = ((total / 500).ceil() * 500).toInt();
+    for (int i = 0; i < 3; i++) {
+      quickAmounts.add(rounded + (i * 500));
+    }
+    quickAmounts.add(10000);
+    quickAmounts.add(20000);
+    quickAmounts.add(50000);
+
+    return quickAmounts.toSet().toList().take(6).map((amount) {
+      return GestureDetector(
+        onTap: () {
+          controller.text = amount.toString();
+          setDialogState(() {});
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.indigo.shade50,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.indigo.shade200),
+          ),
+          child: Text(
+            '$amount FC',
+            style: TextStyle(
+              color: Colors.indigo.shade700,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      );
+    }).toList();
   }
 
   // =============================================
@@ -647,7 +743,6 @@ class _SalesScreenState extends State<SalesScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ---- ICÔNE SUCCÈS ----
               Container(
                 width: 80,
                 height: 80,
@@ -655,8 +750,8 @@ class _SalesScreenState extends State<SalesScreen> {
                   color: Colors.green.shade100,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.check,
-                    size: 45, color: Colors.green.shade700),
+                child:
+                    Icon(Icons.check, size: 45, color: Colors.green.shade700),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -666,12 +761,9 @@ class _SalesScreenState extends State<SalesScreen> {
               const SizedBox(height: 8),
               Text(
                 'Ticket #${sale.id.substring(sale.id.length - 6)}',
-                style: TextStyle(
-                    color: Colors.grey.shade500, fontSize: 14),
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
               ),
               const SizedBox(height: 20),
-
-              // ---- RÉSUMÉ ----
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
@@ -680,18 +772,16 @@ class _SalesScreenState extends State<SalesScreen> {
                 ),
                 child: Column(
                   children: [
-                    _summaryRow('Total',
-                        '${sale.totalAmount.toStringAsFixed(0)} FC'),
-                    _summaryRow('Payé',
-                        '${sale.amountPaid.toStringAsFixed(0)} FC'),
-                    _summaryRow('Monnaie',
-                        '${sale.change.toStringAsFixed(0)} FC'),
+                    _summaryRow(
+                        'Total', '${sale.totalAmount.toStringAsFixed(0)} FC'),
+                    _summaryRow(
+                        'Payé', '${sale.amountPaid.toStringAsFixed(0)} FC'),
+                    _summaryRow(
+                        'Monnaie', '${sale.change.toStringAsFixed(0)} FC'),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
-
-              // ---- BOUTON NOUVELLE VENTE ----
               SizedBox(
                 width: double.infinity,
                 height: 54,
@@ -731,8 +821,8 @@ class _SalesScreenState extends State<SalesScreen> {
           Text(label,
               style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
           Text(value,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w600, fontSize: 15)),
+              style:
+                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
         ],
       ),
     );
@@ -757,12 +847,26 @@ class _SalesScreenState extends State<SalesScreen> {
         backgroundColor:
             isError ? Colors.red.shade600 : Colors.green.shade600,
         behavior: SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: const EdgeInsets.all(12),
         duration: const Duration(seconds: 1),
       ),
     );
+  }
+
+  String _categoryEmoji(String category) {
+    switch (category) {
+      case 'Boissons':
+        return '🥤';
+      case 'Alimentation':
+        return '🍞';
+      case 'Hygiène':
+        return '🧴';
+      case 'Confiserie':
+        return '🍬';
+      default:
+        return '📦';
+    }
   }
 
   // =============================================
@@ -847,13 +951,11 @@ class _SalesScreenState extends State<SalesScreen> {
                     ),
                     Text(
                       'Ma Caisse',
-                      style: TextStyle(
-                          color: Colors.white70, fontSize: 12),
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                   ],
                 ),
               ),
-              // Badge caissier
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -897,8 +999,8 @@ class _SalesScreenState extends State<SalesScreen> {
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText: 'Rechercher un produit...',
-                      hintStyle: TextStyle(
-                          color: Colors.white.withOpacity(0.5)),
+                      hintStyle:
+                          TextStyle(color: Colors.white.withOpacity(0.5)),
                       prefixIcon: Icon(Icons.search,
                           color: Colors.white.withOpacity(0.7)),
                       suffixIcon: _searchQuery.isNotEmpty
@@ -928,15 +1030,15 @@ class _SalesScreenState extends State<SalesScreen> {
 
               // Bouton Scanner
               GestureDetector(
-                onTap: _simulateBarcodeScan,
+                onTap: _openScanner,
                 child: Container(
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                        color: Colors.white.withOpacity(0.3)),
+                    border:
+                        Border.all(color: Colors.white.withOpacity(0.3)),
                   ),
                   child: const Icon(Icons.qr_code_scanner,
                       color: Colors.white, size: 26),
@@ -954,14 +1056,28 @@ class _SalesScreenState extends State<SalesScreen> {
   // =============================================
 
   Widget _buildSearchResults() {
+    if (_searchResults.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off, size: 60, color: Colors.grey.shade300),
+            const SizedBox(height: 12),
+            Text('Aucun produit trouvé pour "$_searchQuery"',
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 15)),
+          ],
+        ),
+      );
+    }
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.08),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -994,17 +1110,16 @@ class _SalesScreenState extends State<SalesScreen> {
             ),
             title: Text(
               product.name,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w600, fontSize: 14),
+              style:
+                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
             ),
             subtitle: Text(
               '${product.price.toStringAsFixed(0)} FC  •  '
               '${lowStock ? "⚠️" : ""} Stock: ${product.stock}',
               style: TextStyle(
                 fontSize: 12,
-                color: lowStock
-                    ? Colors.orange.shade700
-                    : Colors.grey.shade500,
+                color:
+                    lowStock ? Colors.orange.shade700 : Colors.grey.shade500,
               ),
             ),
             trailing: inCart
@@ -1070,16 +1185,11 @@ class _SalesScreenState extends State<SalesScreen> {
             Text(
               'Recherchez un produit ou scannez\nun code-barres pour commencer',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: Colors.grey.shade400, fontSize: 14),
+              style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
             ),
             const SizedBox(height: 24),
-            // Bouton rapide pour voir tous les produits
             OutlinedButton.icon(
               onPressed: () {
-                _searchController.text = ' ';
-                _onSearchChanged(' ');
-                // Afficher tous les produits
                 setState(() {
                   _searchResults = _productService.getProducts();
                   _showSearchResults = true;
@@ -1090,8 +1200,8 @@ class _SalesScreenState extends State<SalesScreen> {
               label: Text('Voir tous les produits',
                   style: TextStyle(color: Colors.indigo.shade600)),
               style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -1123,7 +1233,6 @@ class _SalesScreenState extends State<SalesScreen> {
                 ),
               ),
               const Spacer(),
-              // Bouton Tout effacer
               TextButton.icon(
                 onPressed: () {
                   showDialog(
@@ -1139,7 +1248,7 @@ class _SalesScreenState extends State<SalesScreen> {
                         ],
                       ),
                       content: const Text(
-                          'Voulez-vous supprimer tous les articles du panier ?'),
+                          'Voulez-vous supprimer tous les articles ?'),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(ctx),
@@ -1166,8 +1275,8 @@ class _SalesScreenState extends State<SalesScreen> {
                 icon: const Icon(Icons.delete_outline,
                     size: 18, color: Colors.red),
                 label: Text('Tout effacer',
-                    style: TextStyle(
-                        color: Colors.red.shade600, fontSize: 13)),
+                    style:
+                        TextStyle(color: Colors.red.shade600, fontSize: 13)),
               ),
             ],
           ),
@@ -1176,7 +1285,8 @@ class _SalesScreenState extends State<SalesScreen> {
         // Liste
         Expanded(
           child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
             itemCount: _cartService.items.length,
             itemBuilder: (context, index) {
               final item = _cartService.items[index];
@@ -1189,7 +1299,7 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   // =============================================
-  //          CARTE ARTICLE DANS LE PANIER
+  //       CARTE ARTICLE DANS LE PANIER
   // =============================================
 
   Widget _buildCartItemCard(dynamic item, int index) {
@@ -1214,7 +1324,8 @@ class _SalesScreenState extends State<SalesScreen> {
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
@@ -1249,11 +1360,9 @@ class _SalesScreenState extends State<SalesScreen> {
             ),
             const SizedBox(width: 12),
 
-            // ---- QUANTITÉ ----
+            // ---- QUANTITÉ (tap pour modifier) ----
             GestureDetector(
-              onTap: () {
-                _showEditQuantityDialog(item);
-              },
+              onTap: () => _showEditQuantityDialog(item),
               child: Container(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 10, vertical: 6),
@@ -1304,7 +1413,6 @@ class _SalesScreenState extends State<SalesScreen> {
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Bouton -
                 _qtyButton(
                   icon: Icons.remove,
                   onTap: () {
@@ -1312,21 +1420,15 @@ class _SalesScreenState extends State<SalesScreen> {
                     setState(() {});
                   },
                 ),
-
-                // Quantité
                 Container(
                   width: 36,
                   alignment: Alignment.center,
                   child: Text(
                     '${item.quantity}',
                     style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
+                        fontWeight: FontWeight.bold, fontSize: 16),
                   ),
                 ),
-
-                // Bouton +
                 _qtyButton(
                   icon: Icons.add,
                   onTap: () {
@@ -1378,7 +1480,7 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   // =============================================
-  //        MODIFIER QUANTITÉ RAPIDEMENT
+  //      MODIFIER QUANTITÉ RAPIDEMENT
   // =============================================
 
   void _showEditQuantityDialog(dynamic item) {
@@ -1414,8 +1516,8 @@ class _SalesScreenState extends State<SalesScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(
-                      color: Colors.indigo.shade400, width: 2),
+                  borderSide:
+                      BorderSide(color: Colors.indigo.shade400, width: 2),
                 ),
               ),
             ),
@@ -1430,11 +1532,9 @@ class _SalesScreenState extends State<SalesScreen> {
             onPressed: () {
               final qty = int.tryParse(qtyController.text) ?? 0;
               Navigator.pop(ctx);
-
               if (qty <= 0) {
                 _cartService.removeProduct(item.product.id);
               } else {
-                // Supprimer et ré-ajouter avec la bonne quantité
                 _cartService.removeProduct(item.product.id);
                 for (int i = 0; i < qty; i++) {
                   _cartService.addProduct(item.product);
@@ -1453,21 +1553,6 @@ class _SalesScreenState extends State<SalesScreen> {
         ],
       ),
     );
-  }
-
-  String _categoryEmoji(String category) {
-    switch (category) {
-      case 'Boissons':
-        return '🥤';
-      case 'Alimentation':
-        return '🍞';
-      case 'Hygiène':
-        return '🧴';
-      case 'Confiserie':
-        return '🍬';
-      default:
-        return '📦';
-    }
   }
 
   // =============================================
@@ -1491,7 +1576,6 @@ class _SalesScreenState extends State<SalesScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Ligne séparatrice décorative
           Container(
             width: 40,
             height: 4,
@@ -1505,7 +1589,6 @@ class _SalesScreenState extends State<SalesScreen> {
           // ---- TOTAUX ----
           Row(
             children: [
-              // Nombre d'articles
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -1527,10 +1610,7 @@ class _SalesScreenState extends State<SalesScreen> {
                   ),
                 ],
               ),
-
               const Spacer(),
-
-              // ---- MONTANT TOTAL ----
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
@@ -1571,7 +1651,9 @@ class _SalesScreenState extends State<SalesScreen> {
               label: const Text(
                 'IMPRIMER LE TICKET',
                 style: TextStyle(
-                    fontSize: 17, fontWeight: FontWeight.bold, letterSpacing: 1),
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green.shade600,

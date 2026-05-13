@@ -4,8 +4,9 @@ class ProductModel {
   String category;
   double price;
   int stock;
-  String unit; // 'piece', 'kg', 'litre', 'boite'
+  String unit;
   String? imageUrl;
+  String? barcode;
   bool isAvailable;
   DateTime createdAt;
 
@@ -17,6 +18,7 @@ class ProductModel {
     this.stock = 0,
     this.unit = 'piece',
     this.imageUrl,
+    this.barcode,
     this.isAvailable = true,
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
@@ -30,6 +32,7 @@ class ProductModel {
       'stock': stock,
       'unit': unit,
       'imageUrl': imageUrl,
+      'barcode': barcode,
       'isAvailable': isAvailable,
       'createdAt': createdAt.toIso8601String(),
     };
@@ -44,6 +47,7 @@ class ProductModel {
       stock: map['stock'] ?? 0,
       unit: map['unit'] ?? 'piece',
       imageUrl: map['imageUrl'],
+      barcode: map['barcode'],
       isAvailable: map['isAvailable'] ?? true,
       createdAt: DateTime.parse(map['createdAt']),
     );
