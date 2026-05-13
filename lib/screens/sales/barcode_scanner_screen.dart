@@ -11,92 +11,155 @@ class BarcodeScannerScreen extends StatefulWidget {
 
 class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     with WidgetsBindingObserver {
-  MobileScannerController cameraController = MobileScannerController(
-    detectionSpeed: DetectionSpeed.normal,
-    facing: CameraFacing.back,
-    torchEnabled: false,
-    // Formats supportés (optimise la détection)
-    formats: [BarcodeFormat.ean13, BarcodeFormat.ean8, BarcodeFormat.upcA, BarcodeFormat.upcE, BarcodeFormat.code128, BarcodeFormat.code39],
-  );
 
-  // 🛡️ PROTECTION ANTI-DOUBLE DÉTECTION
-  bool _isProcessing = false;
-  bool _isDisposed = false;
-  String? _lastScannedCode;
-  DateTime? _lastScanTime;
+  // Controller de la caméra
+  late MobileScannerController _cameraController;
+
+  // 🛡️ VERROU GLOBAL (hors du cycle de vie du widget)
+  static bool _globalLock = false;
+
+  // État local pour l'UI
+  bool _flashOn = false;
+  bool _detected = false;
+  String _detectedCode = '';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    _cameraController = MobileScannerController(
+      detectionSpeed: DetectionSpeed.normal,
+      facing: CameraFacing.back,
+      torchEnabled: false,
+      autoStart: true,
+    );
+
+    // Réinitialiser le verrou global
+    _globalLock = false;
   }
 
   @override
   void dispose() {
-    _isDisposed = true;
+    _isCleaningUp = true;
     WidgetsBinding.instance.removeObserver(this);
-    // Arrêter proprement la caméra
-    cameraController.dispose();
+
+    // Disposer le controller de manière sûre
+    try {
+      _cameraController.dispose();
+    } catch (_) {}
+
     super.dispose();
   }
 
+  bool _isCleaningUp = false;
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // Gérer le cycle de vie de l'app (mise en arrière-plan, etc.)
-    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
-      cameraController.stop();
+    if (_isCleaningUp) return;
+
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      try {
+        _cameraController.stop();
+      } catch (_) {}
     } else if (state == AppLifecycleState.resumed) {
-      cameraController.start();
+      if (!_globalLock && !_detected) {
+        try {
+          _cameraController.start();
+        } catch (_) {}
+      }
     }
   }
 
-  void _onBarcodeDetected(BarcodeCapture capture) {
-    // 🛡️ 1. Protection : Déjà en cours de traitement ?
-    if (_isProcessing) return;
+  // =============================================
+  //    CALLBACK DE DÉTECTION (ULTRA PROTÉGÉ)
+  // =============================================
 
-    // 🛡️ 2. Protection : Widget déjà disposé ?
-    if (_isDisposed || !mounted) return;
+  void _handleDetection(BarcodeCapture capture) {
+    // 🛡️ Vérification 1 : Verrou global déjà activé ?
+    if (_globalLock) return;
 
-    final List<Barcode> barcodes = capture.barcodes;
-    if (barcodes.isEmpty) return;
+    // 🛡️ Vérification 2 : Déjà détecté localement ?
+    if (_detected) return;
 
-    final String? code = barcodes.first.rawValue;
-    if (code == null || code.isEmpty) return;
+    // 🛡️ Vérification 3 : Nettoyage en cours ?
+    if (_isCleaningUp) return;
 
-    // 🛡️ 3. Protection : Anti-rebond (même code scanné il y a moins de 2 sec)
-    final now = DateTime.now();
-    if (_lastScannedCode == code && 
-        _lastScanTime != null && 
-        now.difference(_lastScanTime!).inSeconds < 2) {
-      return;
-    }
+    // 🛡️ Vérification 4 : Widget monté ?
+    if (!mounted) return;
 
-    // 🛡️ 4. Verrouiller le traitement
-    _isProcessing = true;
-    _lastScannedCode = code;
-    _lastScanTime = now;
+    // Extraire le code
+    if (capture.barcodes.isEmpty) return;
+    final String? code = capture.barcodes.first.rawValue;
+    if (code == null || code.trim().isEmpty) return;
 
-    // Vibration de confirmation
+    // 🔒 ACTIVER LE VERROU GLOBAL IMMÉDIATEMENT (synchrone)
+    _globalLock = true;
+    _detected = true;
+    _detectedCode = code;
+
+    // Vibration
     HapticFeedback.heavyImpact();
 
-    // Arrêter la caméra pour économiser les ressources et arrêter la détection
-    cameraController.stop();
+    // Mettre à jour l'UI (le cadre devient vert)
+    if (mounted) {
+      setState(() {});
+    }
+
+    // Arrêter la caméra puis fermer l'écran
+    _closeAndReturn(code);
+  }
+
+  // =============================================
+  //    FERMETURE SÉCURISÉE
+  // =============================================
+
+  Future<void> _closeAndReturn(String code) async {
+    // Petit délai pour montrer le feedback visuel "Détecté !"
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    if (!mounted) return;
+
+    // Arrêter la caméra proprement
+    try {
+      await _cameraController.stop();
+    } catch (_) {}
+
+    if (!mounted) return;
 
     // Retourner le code
-    if (mounted) {
-      Navigator.pop(context, code);
-    }
+    Navigator.of(context).pop(code);
   }
 
+  // =============================================
+  //    TOGGLE FLASH
+  // =============================================
+
   void _toggleFlash() {
-    if (_isDisposed) return;
+    if (_detected || _isCleaningUp) return;
     try {
-      cameraController.toggleTorch();
-      setState(() {}); // Pour mettre à jour l'icône si besoin
-    } catch (e) {
-      debugPrint('Erreur flash: $e');
-    }
+      _cameraController.toggleTorch();
+      setState(() => _flashOn = !_flashOn);
+    } catch (_) {}
   }
+
+  // =============================================
+  //    RETOUR MANUEL
+  // =============================================
+
+  void _goBack() {
+    _globalLock = true;
+    _detected = true;
+    try {
+      _cameraController.stop();
+    } catch (_) {}
+    Navigator.of(context).pop();
+  }
+
+  // =============================================
+  //               BUILD
+  // =============================================
 
   @override
   Widget build(BuildContext context) {
@@ -106,176 +169,141 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         children: [
           // ---- CAMÉRA ----
           MobileScanner(
-            controller: cameraController,
-            onDetect: _onBarcodeDetected,
-            // Ligne importante : fit pour bien remplir l'écran
+            controller: _cameraController,
+            onDetect: _handleDetection,
             fit: BoxFit.cover,
+            errorBuilder: (context, error, child) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline,
+                        color: Colors.red, size: 50),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Erreur caméra:\n${error.toString()}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                          color: Colors.white70, fontSize: 14),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Retour'),
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
 
-          // ---- OVERLAY AVEC CADRE DE SCAN ----
+          // ---- OVERLAY ----
           _buildScanOverlay(),
 
           // ---- EN-TÊTE ----
           _buildHeader(),
 
-          // ---- INSTRUCTIONS EN BAS ----
-          _buildBottomInstructions(),
+          // ---- BAS ----
+          _buildBottom(),
         ],
       ),
     );
   }
 
   // =============================================
-  //        OVERLAY AVEC CADRE ANIMÉ
+  //        OVERLAY CADRE DE SCAN
   // =============================================
 
   Widget _buildScanOverlay() {
     return Column(
       children: [
-        // Haut
         Expanded(
           flex: 2,
-          child: Container(color: Colors.black.withOpacity(0.6)),
+          child: Container(color: Colors.black.withOpacity(0.55)),
         ),
-        // Centre avec cadre
         Row(
           children: [
-            // Gauche
             Expanded(
-              child: Container(color: Colors.black.withOpacity(0.6)),
+              child: Container(color: Colors.black.withOpacity(0.55)),
             ),
-            // Cadre de scan
             SizedBox(
               width: 280,
               height: 180,
               child: Stack(
                 children: [
-                  // Coins
-                  ..._buildCornerBorders(),
-                  // Ligne de scan animée seulement si pas en traitement
-                  if (!_isProcessing) _buildScanLine(),
+                  ..._buildCorners(),
+                  if (!_detected) _buildScanLine(),
+                  if (_detected) _buildDetectedBadge(),
                 ],
               ),
             ),
-            // Droite
             Expanded(
-              child: Container(color: Colors.black.withOpacity(0.6)),
+              child: Container(color: Colors.black.withOpacity(0.55)),
             ),
           ],
         ),
-        // Bas
         Expanded(
           flex: 3,
-          child: Container(color: Colors.black.withOpacity(0.6)),
+          child: Container(color: Colors.black.withOpacity(0.55)),
         ),
       ],
     );
   }
 
-  List<Widget> _buildCornerBorders() {
-    const double cornerSize = 30;
-    const double cornerWidth = 4;
-    final color = _isProcessing ? Colors.green : Colors.indigo.shade400;
+  List<Widget> _buildCorners() {
+    const s = 30.0;
+    const w = 4.0;
+    final c = _detected ? Colors.green : Colors.indigo.shade400;
 
     return [
-      // Coin haut-gauche
       Positioned(
         top: 0,
         left: 0,
         child: Container(
-          width: cornerSize,
-          height: cornerSize,
+          width: s,
+          height: s,
           decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(color: color, width: cornerWidth),
-              left: BorderSide(color: color, width: cornerWidth),
-            ),
+            border: Border(top: BorderSide(color: c, width: w), left: BorderSide(color: c, width: w)),
             borderRadius: const BorderRadius.only(topLeft: Radius.circular(12)),
           ),
         ),
       ),
-      // Coin haut-droit
       Positioned(
         top: 0,
         right: 0,
         child: Container(
-          width: cornerSize,
-          height: cornerSize,
+          width: s,
+          height: s,
           decoration: BoxDecoration(
-            border: Border(
-              top: BorderSide(color: color, width: cornerWidth),
-              right: BorderSide(color: color, width: cornerWidth),
-            ),
+            border: Border(top: BorderSide(color: c, width: w), right: BorderSide(color: c, width: w)),
             borderRadius: const BorderRadius.only(topRight: Radius.circular(12)),
           ),
         ),
       ),
-      // Coin bas-gauche
       Positioned(
         bottom: 0,
         left: 0,
         child: Container(
-          width: cornerSize,
-          height: cornerSize,
+          width: s,
+          height: s,
           decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: color, width: cornerWidth),
-              left: BorderSide(color: color, width: cornerWidth),
-            ),
+            border: Border(bottom: BorderSide(color: c, width: w), left: BorderSide(color: c, width: w)),
             borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(12)),
           ),
         ),
       ),
-      // Coin bas-droit
       Positioned(
         bottom: 0,
         right: 0,
         child: Container(
-          width: cornerSize,
-          height: cornerSize,
+          width: s,
+          height: s,
           decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(color: color, width: cornerWidth),
-              right: BorderSide(color: color, width: cornerWidth),
-            ),
+            border: Border(bottom: BorderSide(color: c, width: w), right: BorderSide(color: c, width: w)),
             borderRadius: const BorderRadius.only(bottomRight: Radius.circular(12)),
           ),
         ),
       ),
-      // Message "Scanné !"
-      if (_isProcessing)
-        Positioned.fill(
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.3),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.green,
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.check_circle, color: Colors.white, size: 22),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Code détecté !',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
     ];
   }
 
@@ -292,21 +320,15 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
           child: Container(
             height: 2,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.transparent,
-                  Colors.indigo.shade400.withOpacity(0.8),
-                  Colors.indigo.shade400,
-                  Colors.indigo.shade400.withOpacity(0.8),
-                  Colors.transparent,
-                ],
-              ),
-              borderRadius: BorderRadius.circular(2),
+              gradient: LinearGradient(colors: [
+                Colors.transparent,
+                Colors.indigo.shade400,
+                Colors.transparent,
+              ]),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.indigo.withOpacity(0.5),
+                  color: Colors.indigo.withOpacity(0.6),
                   blurRadius: 8,
-                  spreadRadius: 1,
                 ),
               ],
             ),
@@ -314,11 +336,45 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         );
       },
       onEnd: () {
-        // Relancer l'animation seulement si pas en traitement et widget monté
-        if (mounted && !_isProcessing && !_isDisposed) {
+        if (mounted && !_detected && !_globalLock) {
           setState(() {});
         }
       },
+    );
+  }
+
+  Widget _buildDetectedBadge() {
+    return Positioned.fill(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.green.withOpacity(0.25),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.green,
+              borderRadius: BorderRadius.circular(25),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                const SizedBox(width: 6),
+                Text(
+                  '$_detectedCode',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -332,61 +388,45 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Row(
           children: [
-            // Bouton retour
             GestureDetector(
-              onTap: () {
-                cameraController.stop();
-                Navigator.pop(context);
-              },
+              onTap: _goBack,
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: Colors.black.withOpacity(0.4),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white,
-                  size: 22,
-                ),
+                child: const Icon(Icons.arrow_back_ios_new_rounded,
+                    color: Colors.white, size: 22),
               ),
             ),
             const SizedBox(width: 16),
-            // Titre
             const Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Scanner un produit',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Text(
-                    'Placez le code-barres dans le cadre',
-                    style: TextStyle(color: Colors.white70, fontSize: 13),
-                  ),
+                  Text('Scanner un produit',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold)),
+                  Text('Placez le code-barres dans le cadre',
+                      style: TextStyle(color: Colors.white70, fontSize: 13)),
                 ],
               ),
             ),
-            // Bouton Flash
             GestureDetector(
               onTap: _toggleFlash,
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: cameraController.value.torchState == TorchState.on
+                  color: _flashOn
                       ? Colors.amber.withOpacity(0.8)
                       : Colors.black.withOpacity(0.4),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  cameraController.value.torchState == TorchState.on
-                      ? Icons.flash_on
-                      : Icons.flash_off,
+                  _flashOn ? Icons.flash_on : Icons.flash_off,
                   color: Colors.white,
                   size: 24,
                 ),
@@ -399,10 +439,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
   }
 
   // =============================================
-  //          INSTRUCTIONS EN BAS
+  //               BAS
   // =============================================
 
-  Widget _buildBottomInstructions() {
+  Widget _buildBottom() {
     return Positioned(
       bottom: 0,
       left: 0,
@@ -413,7 +453,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // Conseils
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -422,37 +461,32 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                 ),
                 child: Column(
                   children: [
-                    _tipRow(Icons.center_focus_strong,
+                    _tip(Icons.center_focus_strong,
                         'Centrez le code-barres dans le cadre'),
                     const SizedBox(height: 10),
-                    _tipRow(Icons.light_mode_outlined,
+                    _tip(Icons.light_mode_outlined,
                         'Assurez-vous d\'avoir un bon éclairage'),
                     const SizedBox(height: 10),
-                    _tipRow(Icons.touch_app_outlined,
+                    _tip(Icons.touch_app_outlined,
                         'Maintenez le téléphone stable'),
                   ],
                 ),
               ),
               const SizedBox(height: 16),
-
-              // Bouton saisie manuelle
               SizedBox(
                 width: double.infinity,
                 height: 52,
                 child: OutlinedButton.icon(
                   onPressed: _showManualEntry,
                   icon: const Icon(Icons.keyboard, size: 22),
-                  label: const Text(
-                    'SAISIE MANUELLE DU CODE',
-                    style:
-                        TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                  ),
+                  label: const Text('SAISIE MANUELLE DU CODE',
+                      style: TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.w600)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
                     side: const BorderSide(color: Colors.white54, width: 1.5),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
+                        borderRadius: BorderRadius.circular(14)),
                   ),
                 ),
               ),
@@ -463,34 +497,33 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
     );
   }
 
-  Widget _tipRow(IconData icon, String text) {
+  Widget _tip(IconData icon, String text) {
     return Row(
       children: [
         Icon(icon, color: Colors.indigo.shade200, size: 20),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(
-            text,
-            style: const TextStyle(color: Colors.white70, fontSize: 13),
-          ),
+          child: Text(text,
+              style: const TextStyle(color: Colors.white70, fontSize: 13)),
         ),
       ],
     );
   }
 
   // =============================================
-  //          SAISIE MANUELLE DU CODE
+  //          SAISIE MANUELLE
   // =============================================
 
   void _showManualEntry() {
-    final TextEditingController codeController = TextEditingController();
+    if (_globalLock) return;
+
+    final controller = TextEditingController();
 
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+            borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
             Icon(Icons.keyboard, color: Colors.indigo.shade600),
@@ -501,13 +534,11 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Entrez le code-barres du produit manuellement :',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
-            ),
+            const Text('Entrez le code-barres du produit :',
+                style: TextStyle(color: Colors.grey, fontSize: 14)),
             const SizedBox(height: 16),
             TextField(
-              controller: codeController,
+              controller: controller,
               autofocus: true,
               keyboardType: TextInputType.number,
               style: const TextStyle(
@@ -540,13 +571,17 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
           ),
           ElevatedButton.icon(
             onPressed: () {
-              final code = codeController.text.trim();
+              final code = controller.text.trim();
               if (code.isNotEmpty) {
-                Navigator.pop(ctx); // Fermer le dialog
-                // Simuler une détection
-                _onBarcodeDetected(BarcodeCapture(barcodes: [
-                  Barcode(rawValue: code, format: BarcodeFormat.unknown)
-                ]));
+                Navigator.pop(ctx);
+
+                _globalLock = true;
+                _detected = true;
+                _detectedCode = code;
+
+                if (mounted) setState(() {});
+
+                _closeAndReturn(code);
               }
             },
             icon: const Icon(Icons.check, size: 18),
@@ -555,8 +590,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
               backgroundColor: Colors.indigo.shade600,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
+                  borderRadius: BorderRadius.circular(12)),
             ),
           ),
         ],

@@ -25,6 +25,7 @@ class _SalesScreenState extends State<SalesScreen> {
   String _searchQuery = '';
   List<ProductModel> _searchResults = [];
   bool _showSearchResults = false;
+  bool _isOpeningScanner = false;
 
   @override
   void dispose() {
@@ -214,6 +215,11 @@ class _SalesScreenState extends State<SalesScreen> {
   // =============================================
 
   Future<void> _openScanner() async {
+    // 🛡️ Bloquer les ouvertures multiples
+    if (_isOpeningScanner) return;
+    _isOpeningScanner = true;
+
+    // Fermer clavier et résultats
     _searchFocus.unfocus();
     setState(() => _showSearchResults = false);
 
@@ -229,7 +235,11 @@ class _SalesScreenState extends State<SalesScreen> {
         _processScannedCode(scannedCode);
       }
     } catch (e) {
-      _showSnackBar('❌ Erreur du scanner: $e', isError: true);
+      debugPrint('Erreur scanner: $e');
+    } finally {
+      // Délai avant de permettre une nouvelle ouverture
+      await Future.delayed(const Duration(milliseconds: 1000));
+      _isOpeningScanner = false;
     }
   }
 
