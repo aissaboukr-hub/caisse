@@ -1,4 +1,4 @@
-name: stock_consultation
+name: caisse
 description: Consultation de stock par code-barres
 
 publish_to: 'none'
