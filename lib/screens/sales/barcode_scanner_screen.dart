@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 class BarcodeScannerScreen extends StatefulWidget {
@@ -8,25 +9,53 @@ class BarcodeScannerScreen extends StatefulWidget {
   State<BarcodeScannerScreen> createState() => _BarcodeScannerScreenState();
 }
 
-class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
+class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
+    with WidgetsBindingObserver {
   MobileScannerController cameraController = MobileScannerController(
     detectionSpeed: DetectionSpeed.normal,
     facing: CameraFacing.back,
     torchEnabled: false,
+    // Formats supportés (optimise la détection)
+    formats: [BarcodeFormat.ean13, BarcodeFormat.ean8, BarcodeFormat.upcA, BarcodeFormat.upcE, BarcodeFormat.code128, BarcodeFormat.code39],
   );
 
-  bool _isDetected = false;
-  bool _flashOn = false;
-  String? _lastCode;
+  // 🛡️ PROTECTION ANTI-DOUBLE DÉTECTION
+  bool _isProcessing = false;
+  bool _isDisposed = false;
+  String? _lastScannedCode;
+  DateTime? _lastScanTime;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
 
   @override
   void dispose() {
+    _isDisposed = true;
+    WidgetsBinding.instance.removeObserver(this);
+    // Arrêter proprement la caméra
     cameraController.dispose();
     super.dispose();
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Gérer le cycle de vie de l'app (mise en arrière-plan, etc.)
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.detached) {
+      cameraController.stop();
+    } else if (state == AppLifecycleState.resumed) {
+      cameraController.start();
+    }
+  }
+
   void _onBarcodeDetected(BarcodeCapture capture) {
-    if (_isDetected) return; // Empêcher double détection
+    // 🛡️ 1. Protection : Déjà en cours de traitement ?
+    if (_isProcessing) return;
+
+    // 🛡️ 2. Protection : Widget déjà disposé ?
+    if (_isDisposed || !mounted) return;
 
     final List<Barcode> barcodes = capture.barcodes;
     if (barcodes.isEmpty) return;
@@ -34,18 +63,39 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     final String? code = barcodes.first.rawValue;
     if (code == null || code.isEmpty) return;
 
-    setState(() {
-      _isDetected = true;
-      _lastCode = code;
-    });
+    // 🛡️ 3. Protection : Anti-rebond (même code scanné il y a moins de 2 sec)
+    final now = DateTime.now();
+    if (_lastScannedCode == code && 
+        _lastScanTime != null && 
+        now.difference(_lastScanTime!).inSeconds < 2) {
+      return;
+    }
 
-    // Vibration + retour avec le code
-    Navigator.pop(context, code);
+    // 🛡️ 4. Verrouiller le traitement
+    _isProcessing = true;
+    _lastScannedCode = code;
+    _lastScanTime = now;
+
+    // Vibration de confirmation
+    HapticFeedback.heavyImpact();
+
+    // Arrêter la caméra pour économiser les ressources et arrêter la détection
+    cameraController.stop();
+
+    // Retourner le code
+    if (mounted) {
+      Navigator.pop(context, code);
+    }
   }
 
   void _toggleFlash() {
-    setState(() => _flashOn = !_flashOn);
-    cameraController.toggleTorch();
+    if (_isDisposed) return;
+    try {
+      cameraController.toggleTorch();
+      setState(() {}); // Pour mettre à jour l'icône si besoin
+    } catch (e) {
+      debugPrint('Erreur flash: $e');
+    }
   }
 
   @override
@@ -54,13 +104,15 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // ---- CAMÉRA EN ARRIÈRE-PLAN ----
+          // ---- CAMÉRA ----
           MobileScanner(
             controller: cameraController,
             onDetect: _onBarcodeDetected,
+            // Ligne importante : fit pour bien remplir l'écran
+            fit: BoxFit.cover,
           ),
 
-          // ---- OVERLAY SOMBRE AVEC FENTRE DE SCAN ----
+          // ---- OVERLAY AVEC CADRE DE SCAN ----
           _buildScanOverlay(),
 
           // ---- EN-TÊTE ----
@@ -74,55 +126,44 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   }
 
   // =============================================
-  //        OVERLAY AVEC FENTRE DE SCAN
+  //        OVERLAY AVEC CADRE ANIMÉ
   // =============================================
 
   Widget _buildScanOverlay() {
     return Column(
       children: [
-        // Partie sombre au-dessus
+        // Haut
         Expanded(
           flex: 2,
           child: Container(color: Colors.black.withOpacity(0.6)),
         ),
-
-        // Zone centrale de scan
+        // Centre avec cadre
         Row(
           children: [
-            // Partie sombre à gauche
+            // Gauche
             Expanded(
               child: Container(color: Colors.black.withOpacity(0.6)),
             ),
-
-            // Fenêtre de scan
-            Container(
+            // Cadre de scan
+            SizedBox(
               width: 280,
               height: 180,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: Colors.transparent,
-                ),
-              ),
               child: Stack(
                 children: [
-                  // Coins animés
+                  // Coins
                   ..._buildCornerBorders(),
-
-                  // Ligne de scan animée
-                  if (!_isDetected) _buildScanLine(),
+                  // Ligne de scan animée seulement si pas en traitement
+                  if (!_isProcessing) _buildScanLine(),
                 ],
               ),
             ),
-
-            // Partie sombre à droite
+            // Droite
             Expanded(
               child: Container(color: Colors.black.withOpacity(0.6)),
             ),
           ],
         ),
-
-        // Partie sombre en dessous
+        // Bas
         Expanded(
           flex: 3,
           child: Container(color: Colors.black.withOpacity(0.6)),
@@ -131,14 +172,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     );
   }
 
-  // =============================================
-  //           CORNERS DU CADRE DE SCAN
-  // =============================================
-
   List<Widget> _buildCornerBorders() {
     const double cornerSize = 30;
     const double cornerWidth = 4;
-    final color = _isDetected ? Colors.green : Colors.indigo.shade400;
+    final color = _isProcessing ? Colors.green : Colors.indigo.shade400;
 
     return [
       // Coin haut-gauche
@@ -157,7 +194,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           ),
         ),
       ),
-
       // Coin haut-droit
       Positioned(
         top: 0,
@@ -174,7 +210,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           ),
         ),
       ),
-
       // Coin bas-gauche
       Positioned(
         bottom: 0,
@@ -191,7 +226,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           ),
         ),
       ),
-
       // Coin bas-droit
       Positioned(
         bottom: 0,
@@ -208,19 +242,17 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           ),
         ),
       ),
-
-      // Message "Détecté !" au centre
-      if (_isDetected)
+      // Message "Scanné !"
+      if (_isProcessing)
         Positioned.fill(
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.green.withOpacity(0.2),
+              color: Colors.green.withOpacity(0.3),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Center(
               child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 decoration: BoxDecoration(
                   color: Colors.green,
                   borderRadius: BorderRadius.circular(25),
@@ -231,7 +263,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                     const Icon(Icons.check_circle, color: Colors.white, size: 22),
                     const SizedBox(width: 8),
                     Text(
-                      'Code: $_lastCode',
+                      'Code détecté !',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
@@ -247,10 +279,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     ];
   }
 
-  // =============================================
-  //           LIGNE DE SCAN ANIMÉE
-  // =============================================
-
   Widget _buildScanLine() {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
@@ -262,7 +290,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           left: 10,
           right: 10,
           child: Container(
-            height: 3,
+            height: 2,
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [
@@ -277,8 +305,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               boxShadow: [
                 BoxShadow(
                   color: Colors.indigo.withOpacity(0.5),
-                  blurRadius: 12,
-                  spreadRadius: 2,
+                  blurRadius: 8,
+                  spreadRadius: 1,
                 ),
               ],
             ),
@@ -286,8 +314,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         );
       },
       onEnd: () {
-        // Boucler l'animation
-        if (mounted && !_isDetected) {
+        // Relancer l'animation seulement si pas en traitement et widget monté
+        if (mounted && !_isProcessing && !_isDisposed) {
           setState(() {});
         }
       },
@@ -306,7 +334,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
           children: [
             // Bouton retour
             GestureDetector(
-              onTap: () => Navigator.pop(context),
+              onTap: () {
+                cameraController.stop();
+                Navigator.pop(context);
+              },
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
@@ -321,7 +352,6 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               ),
             ),
             const SizedBox(width: 16),
-
             // Titre
             const Expanded(
               child: Column(
@@ -342,20 +372,21 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                 ],
               ),
             ),
-
             // Bouton Flash
             GestureDetector(
               onTap: _toggleFlash,
               child: Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: _flashOn
+                  color: cameraController.value.torchState == TorchState.on
                       ? Colors.amber.withOpacity(0.8)
                       : Colors.black.withOpacity(0.4),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  _flashOn ? Icons.flash_on : Icons.flash_off,
+                  cameraController.value.torchState == TorchState.on
+                      ? Icons.flash_on
+                      : Icons.flash_off,
                   color: Colors.white,
                   size: 24,
                 ),
@@ -380,6 +411,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               // Conseils
               Container(
@@ -408,7 +440,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                 width: double.infinity,
                 height: 52,
                 child: OutlinedButton.icon(
-                  onPressed: () => _showManualEntry(),
+                  onPressed: _showManualEntry,
                   icon: const Icon(Icons.keyboard, size: 22),
                   label: const Text(
                     'SAISIE MANUELLE DU CODE',
@@ -511,7 +543,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               final code = codeController.text.trim();
               if (code.isNotEmpty) {
                 Navigator.pop(ctx); // Fermer le dialog
-                Navigator.pop(context, code); // Retourner le code
+                // Simuler une détection
+                _onBarcodeDetected(BarcodeCapture(barcodes: [
+                  Barcode(rawValue: code, format: BarcodeFormat.unknown)
+                ]));
               }
             },
             icon: const Icon(Icons.check, size: 18),
