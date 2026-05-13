@@ -88,11 +88,13 @@ class UserService extends ChangeNotifier {
     return true;
   }
 
-  // Supprimer un utilisateur
+    // Supprimer un utilisateur
   bool deleteUser(String id) {
-    final removed = _users.removeWhere((u) => u.id == id) > 0;
-    if (removed) notifyListeners();
-    return removed;
+    final index = _users.indexWhere((u) => u.id == id);
+    if (index == -1) return false;
+    _users.removeAt(index);
+    notifyListeners();
+    return true;
   }
 
   // Activer/Désactiver
