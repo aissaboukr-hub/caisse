@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../widgets/custom_textfield.dart';
 import '../services/user_service.dart';
 import 'users/users_list_screen.dart';
+import 'sales/sales_screen.dart'; // ← NOUVEL IMPORT ÉTAPE 3
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -59,11 +60,12 @@ class _LoginScreenState extends State<LoginScreen>
 
     setState(() => _isLoading = true);
 
-    // Simulation d'une requête serveur ( délai 2 sec )
+    // Simulation d'une requête serveur (délai 2 sec)
     Future.delayed(const Duration(seconds: 2), () {
+      if (!mounted) return;
       setState(() => _isLoading = false);
 
-      // ✅ Authentification via le UserService
+      // Authentification via UserService
       final user = _userService.authenticate(username, password);
 
       if (user != null) {
@@ -71,6 +73,8 @@ class _LoginScreenState extends State<LoginScreen>
 
         // Redirection selon le rôle après un court délai
         Future.delayed(const Duration(milliseconds: 800), () {
+          if (!mounted) return;
+          
           if (user.role == 'admin') {
             // Admin → Gestion des utilisateurs
             Navigator.pushReplacement(
@@ -80,10 +84,12 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             );
           } else {
-            // Caissier → (Interface de vente à l'étape 3)
-            _showSnackBar(
-              '🛒 Interface caisse bientôt disponible',
-              isError: false,
+            // Caissier → Interface de Caisse / Vente (Étape 3)
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (_) => SalesScreen(cashierName: user.fullName),
+              ),
             );
           }
         });
@@ -97,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen>
   }
 
   // =============================================
-  //          SNACKBAR ( messages )
+  //          SNACKBAR (messages)
   // =============================================
   void _showSnackBar(String message, {required bool isError}) {
     ScaffoldMessenger.of(context).showSnackBar(
