@@ -7,7 +7,6 @@ import 'package:csv/csv.dart';
 import '../models/product_model.dart';
 
 class ImportService {
-  // Singleton
   static final ImportService _instance = ImportService._internal();
   factory ImportService() => _instance;
   ImportService._internal();
@@ -18,13 +17,9 @@ class ImportService {
 
   Future<List<ProductModel>> importFromExcel(String filePath) async {
     try {
-      // 1. Lire les bytes du fichier
       final bytes = File(filePath).readAsBytesSync();
-
-      // 2. Décoder le fichier Excel
       final excel = Excel.decodeBytes(bytes);
 
-      // 3. Prendre la première feuille
       if (excel.tables.isEmpty) {
         throw Exception('Le fichier Excel ne contient aucune feuille');
       }
@@ -36,7 +31,6 @@ class ImportService {
         throw Exception('La feuille "$sheetName" est vide');
       }
 
-      // 4. Convertir les lignes en liste de listes de String
       final List<List<String>> rows = [];
       for (final row in sheet.rows) {
         final List<String> stringRow = [];
@@ -46,7 +40,6 @@ class ImportService {
         rows.add(stringRow);
       }
 
-      // 5. Parser les produits
       return _parseRows(rows);
     } catch (e) {
       debugPrint('Erreur import Excel: $e');
@@ -60,7 +53,6 @@ class ImportService {
 
   Future<List<ProductModel>> importFromGoogleSheets(String url) async {
     try {
-      // 1. Extraire l'ID de la feuille Google Sheets
       final sheetId = _extractSheetId(url);
       if (sheetId == null) {
         throw Exception(
@@ -70,16 +62,12 @@ class ImportService {
         );
       }
 
-      // 2. Extraire le gid (feuille spécifique)
       final gid = _extractGid(url);
-
-      // 3. Construire l'URL CSV
       final csvUrl =
           'https://docs.google.com/spreadsheets/d/$sheetId/export?format=csv&gid=$gid';
 
       debugPrint('Téléchargement CSV: $csvUrl');
 
-      // 4. Télécharger le CSV
       final response = await http.get(
         Uri.parse(csvUrl),
         headers: {'Accept': 'text/csv; charset=utf-8'},
@@ -100,20 +88,16 @@ class ImportService {
         );
       }
 
-      // 5. Décoder le CSV
       final csvString = utf8.decode(response.bodyBytes);
-
       final List<List<dynamic>> csvRows = const CsvToListConverter(
         shouldParseNumbers: false,
         eol: '\n',
       ).convert(csvString);
 
-      // 6. Convertir en List<List<String>>
       final List<List<String>> rows = csvRows
           .map((row) => row.map((cell) => cell.toString().trim()).toList())
           .toList();
 
-      // 7. Parser les produits
       return _parseRows(rows);
     } catch (e) {
       debugPrint('Erreur import Google Sheets: $e');
@@ -123,23 +107,20 @@ class ImportService {
 
   // =============================================
   //        PARSER LES LIGNES EN PRODUITS
+  //  ⚠️ SIMPLIFIÉ : seulement Nom, Prix, Stock, Code-barres
   // =============================================
 
   List<ProductModel> _parseRows(List<List<String>> rows) {
     if (rows.isEmpty) return [];
 
     // 1. Détecter les colonnes depuis l'en-tête (première ligne)
-    final headers = rows.first.map((h) => h.toLowerCase().trim()).toList();
+    final headers =
+        rows.first.map((h) => h.toLowerCase().trim()).toList();
 
     final nameIdx = _findColumn(headers, [
       'nom', 'name', 'produit', 'product', 'designation',
       'désignation', 'designation', 'libellé', 'libelle',
-      'article', 'intitulé', 'intitule',
-    ]);
-
-    final catIdx = _findColumn(headers, [
-      'catégorie', 'categorie', 'category', 'type',
-      'famille', 'groupe',
+      'article', 'intitulé', 'intitule', 'désignation',
     ]);
 
     final priceIdx = _findColumn(headers, [
@@ -149,11 +130,7 @@ class ImportService {
 
     final stockIdx = _findColumn(headers, [
       'stock', 'quantité', 'quantite', 'qty', 'qte',
-      'quantite', 'qté', 'qtt', 'disponible',
-    ]);
-
-    final unitIdx = _findColumn(headers, [
-      'unité', 'unite', 'unit', 'mesure',
+      'qté', 'qtt', 'disponible',
     ]);
 
     final barcodeIdx = _findColumn(headers, [
@@ -162,9 +139,8 @@ class ImportService {
     ]);
 
     debugPrint(
-      'Colonnes détectées: nom=$nameIdx, cat=$catIdx, '
-      'prix=$priceIdx, stock=$stockIdx, unit=$unitIdx, '
-      'barcode=$barcodeIdx',
+      'Colonnes détectées: nom=$nameIdx, '
+      'prix=$priceIdx, stock=$stockIdx, barcode=$barcodeIdx',
     );
 
     // Si pas de colonne nom trouvée, utiliser la première colonne
@@ -182,23 +158,20 @@ class ImportService {
         continue;
       }
 
-      // Extraire les valeurs
       final name = _getCell(row, effectiveNameIdx);
-      if (name.isEmpty) continue; // Ignorer si pas de nom
+      if (name.isEmpty) continue;
 
-      final category = _getCell(row, catIdx, defaultValue: 'Divers');
       final price = _parseDouble(_getCell(row, priceIdx));
       final stock = _parseInt(_getCell(row, stockIdx, defaultValue: '0'));
-      final unit = _parseUnit(_getCell(row, unitIdx));
       final barcode = _getCell(row, barcodeIdx, defaultValue: '');
 
       products.add(ProductModel(
         id: '${idCounter++}',
         name: name,
-        category: category.isEmpty ? 'Divers' : category,
+        category: 'Divers',    // ← Toujours "Divers"
         price: price,
         stock: stock,
-        unit: unit,
+        unit: 'piece',         // ← Toujours "piece"
         barcode: barcode.isNotEmpty ? barcode : null,
         isAvailable: true,
         createdAt: DateTime.now(),
@@ -209,10 +182,9 @@ class ImportService {
   }
 
   // =============================================
-  //           UTILITAIRES DE PARSING
+  //           UTILITAIRES
   // =============================================
 
-  /// Trouver l'index d'une colonne parmi les en-têtes
   int _findColumn(List<String> headers, List<String> keywords) {
     for (int i = 0; i < headers.length; i++) {
       final header = headers[i].toLowerCase().trim();
@@ -225,17 +197,15 @@ class ImportService {
     return -1;
   }
 
-  /// Obtenir la valeur d'une cellule de manière sûre
-  String _getCell(List<String> row, int index, {String defaultValue = ''}) {
+  String _getCell(List<String> row, int index,
+      {String defaultValue = ''}) {
     if (index < 0 || index >= row.length) return defaultValue;
     return row[index].trim();
   }
 
-  /// Convertir une cellule Excel en String
   String _cellToString(dynamic value) {
     if (value == null) return '';
     if (value is double) {
-      // Si c'est un entier (ex: 3500.0 → "3500")
       return value == value.roundToDouble()
           ? value.round().toString()
           : value.toString();
@@ -243,36 +213,18 @@ class ImportService {
     return value.toString().trim();
   }
 
-  /// Parser un double depuis une String
   double _parseDouble(String value) {
     if (value.isEmpty) return 0;
-    // Remplacer virgule par point (format français)
     final cleaned = value.replaceAll(',', '.').replaceAll(' ', '');
     return double.tryParse(cleaned) ?? 0;
   }
 
-  /// Parser un int depuis une String
   int _parseInt(String value) {
     if (value.isEmpty) return 0;
     final cleaned = value.replaceAll(' ', '').replaceAll('.', '');
-    // Essayer d'abord int, puis double arrondi
-    return int.tryParse(cleaned) ?? (double.tryParse(cleaned)?.round() ?? 0);
+    return int.tryParse(cleaned) ??
+        (double.tryParse(cleaned)?.round() ?? 0);
   }
-
-  /// Détecter l'unité
-  String _parseUnit(String value) {
-    final v = value.toLowerCase().trim();
-    if (v.contains('kg') || v.contains('kilo')) return 'kg';
-    if (v.contains('litre') || v.contains('liter') || v == 'l') return 'litre';
-    if (v.contains('boite') || v.contains('boîte') || v.contains('box')) {
-      return 'boite';
-    }
-    return 'piece';
-  }
-
-  // =============================================
-  //     EXTRAIRE L'ID DEPUIS L'URL GOOGLE SHEETS
-  // =============================================
 
   String? _extractSheetId(String url) {
     final regex = RegExp(r'/spreadsheets/d/([a-zA-Z0-9_-]+)');
@@ -280,7 +232,6 @@ class ImportService {
     return match?.group(1);
   }
 
-  /// Extraire le gid (ID de feuille spécifique)
   String _extractGid(String url) {
     final regex = RegExp(r'gid=([0-9]+)');
     final match = regex.firstMatch(url);

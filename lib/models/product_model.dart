@@ -1,10 +1,10 @@
 class ProductModel {
   String id;
   String name;
-  String category;
+  String category;     // Garde une valeur par défaut "Divers"
   double price;
   int stock;
-  String unit;
+  String unit;         // Garde une valeur par défaut "piece"
   String? imageUrl;
   String? barcode;
   bool isAvailable;
@@ -13,7 +13,7 @@ class ProductModel {
   ProductModel({
     required this.id,
     required this.name,
-    required this.category,
+    this.category = 'Divers',
     required this.price,
     this.stock = 0,
     this.unit = 'piece',
@@ -53,16 +53,5 @@ class ProductModel {
     );
   }
 
-  String get unitLabel {
-    switch (unit) {
-      case 'kg':
-        return '/ Kg';
-      case 'litre':
-        return '/ L';
-      case 'boite':
-        return '/ Boîte';
-      default:
-        return '/ Pce';
-    }
-  }
+  String get unitLabel => '/ Pce';
 }

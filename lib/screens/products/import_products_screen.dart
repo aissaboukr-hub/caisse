@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../models/product_model.dart';
 import '../../services/import_service.dart';
@@ -17,8 +16,7 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
   final ProductService _productService = ProductService();
   final TextEditingController _urlController = TextEditingController();
 
-  // État
-  String _selectedMethod = ''; // 'excel' ou 'gsheet'
+  String _selectedMethod = '';
   bool _isLoading = false;
   bool _replaceAll = true;
   String _statusMessage = '';
@@ -60,7 +58,6 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
         _previewProducts = [];
       });
 
-      // Parser le fichier
       final products = await _importService.importFromExcel(filePath);
 
       setState(() {
@@ -107,7 +104,8 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
     });
 
     try {
-      final products = await _importService.importFromGoogleSheets(url);
+      final products =
+          await _importService.importFromGoogleSheets(url);
 
       setState(() {
         _isLoading = false;
@@ -140,7 +138,6 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
       return;
     }
 
-    // Confirmation
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -253,7 +250,6 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
 
       _showSnackBar('✅ $added produits importés !', isError: false);
 
-      // Retourner à l'écran précédent après 1.5 sec
       Future.delayed(const Duration(milliseconds: 1500), () {
         if (mounted) Navigator.pop(context, true);
       });
@@ -262,7 +258,7 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
         _isLoading = false;
         _statusMessage = 'Erreur: $e';
       });
-      _showSnackBar('❌ Erreur lors de l\'import: $e', isError: true);
+      _showSnackBar('❌ Erreur: $e', isError: true);
     }
   }
 
@@ -313,36 +309,27 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ---- GUIDE DU FORMAT ----
             _buildFormatGuide(),
             const SizedBox(height: 20),
-
-            // ---- CHOIX DE LA MÉTHODE ----
             _buildMethodSelector(),
             const SizedBox(height: 20),
 
-            // ---- ZONE DE SÉLECTION (selon la méthode) ----
             if (_selectedMethod == 'excel') _buildExcelSection(),
             if (_selectedMethod == 'gsheet') _buildGoogleSheetsSection(),
             if (_selectedMethod.isNotEmpty) const SizedBox(height: 16),
 
-            // ---- LOADING ----
             if (_isLoading) _buildLoading(),
 
-            // ---- STATUS ----
             if (_statusMessage.isNotEmpty && !_isLoading)
               _buildStatusBar(),
             const SizedBox(height: 16),
 
-            // ---- MODE D'IMPORT ----
             if (_showPreview) _buildImportMode(),
             if (_showPreview) const SizedBox(height: 16),
 
-            // ---- APERÇU ----
             if (_showPreview) _buildPreview(),
             if (_showPreview) const SizedBox(height: 20),
 
-            // ---- BOUTON IMPORTER ----
             if (_showPreview) _buildImportButton(),
             const SizedBox(height: 30),
           ],
@@ -353,6 +340,7 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
 
   // =============================================
   //          GUIDE DU FORMAT ATTENDU
+  //  ⚠️ SIMPLIFIÉ : Nom, Prix, Stock, Code-barres
   // =============================================
 
   Widget _buildFormatGuide() {
@@ -385,7 +373,7 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Tableau d'exemple
+          // Tableau simplifié
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -395,8 +383,8 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                headingRowColor: WidgetStateProperty.all(
-                    Colors.indigo.shade600),
+                headingRowColor:
+                    WidgetStateProperty.all(Colors.indigo.shade600),
                 headingTextStyle: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -404,20 +392,20 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
                 ),
                 dataTextStyle: TextStyle(
                     color: Colors.grey.shade800, fontSize: 12),
-                columnSpacing: 16,
+                columnSpacing: 20,
                 columns: const [
                   DataColumn(label: Text('Nom')),
-                  DataColumn(label: Text('Catégorie')),
-                  DataColumn(label: Text('Prix')),
+                  DataColumn(label: Text('Prix (DZ)')),
                   DataColumn(label: Text('Stock')),
-                  DataColumn(label: Text('Unité')),
                   DataColumn(label: Text('Code-barres')),
                 ],
                 rows: [
-                  _exampleRow('Coca-Cola 1L', 'Boissons', '3500', '50',
-                      'piece', '5449000000996'),
-                  _exampleRow('Riz 5Kg', 'Alimentation', '12000', '20',
-                      'piece', '6111028000050'),
+                  _exampleRow('Coca-Cola 1L', '3500', '50',
+                      '5449000000996'),
+                  _exampleRow('Riz 5Kg', '12000', '20',
+                      '6111028000050'),
+                  _exampleRow('Eau Pure 1.5L', '1500', '100',
+                      '6111028000012'),
                 ],
               ),
             ),
@@ -426,8 +414,8 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
 
           Text(
             '• La première ligne doit contenir les en-têtes\n'
-            '• Les colonnes "Nom" et "Prix" sont obligatoires\n'
-            '• Les noms de colonnes en français ou anglais sont acceptés\n'
+            '• La colonne "Nom" est obligatoire\n'
+            '• Les colonnes "Prix", "Stock", "Code-barres" sont optionnelles\n'
             '• Formats acceptés: .xlsx, .xls, Google Sheets',
             style: TextStyle(
                 color: Colors.grey.shade600, fontSize: 12, height: 1.5),
@@ -438,14 +426,11 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
   }
 
   DataRow _exampleRow(
-      String nom, String cat, String prix, String stock,
-      String unit, String code) {
+      String nom, String prix, String stock, String code) {
     return DataRow(cells: [
       DataCell(Text(nom)),
-      DataCell(Text(cat)),
       DataCell(Text(prix)),
       DataCell(Text(stock)),
-      DataCell(Text(unit)),
       DataCell(Text(code)),
     ]);
   }
@@ -645,7 +630,6 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
       ),
       child: Column(
         children: [
-          // Fichier sélectionné ?
           if (_fileName != null && !_isLoading)
             Container(
               padding: const EdgeInsets.all(12),
@@ -669,12 +653,11 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
                       ),
                     ),
                   ),
-                  Icon(Icons.check_circle, color: Colors.green.shade400),
+                  Icon(Icons.check_circle,
+                      color: Colors.green.shade400),
                 ],
               ),
             ),
-
-          // Bouton sélectionner fichier
           SizedBox(
             width: double.infinity,
             height: 54,
@@ -734,8 +717,6 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
             ),
           ),
           const SizedBox(height: 10),
-
-          // Champ URL
           TextField(
             controller: _urlController,
             style: const TextStyle(fontSize: 14),
@@ -744,8 +725,8 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
                   'https://docs.google.com/spreadsheets/d/...',
               hintStyle: TextStyle(
                   color: Colors.grey.shade400, fontSize: 13),
-              prefixIcon: Icon(Icons.link,
-                  color: Colors.blue.shade400),
+              prefixIcon:
+                  Icon(Icons.link, color: Colors.blue.shade400),
               filled: true,
               fillColor: Colors.grey.shade50,
               enabledBorder: OutlineInputBorder(
@@ -760,8 +741,6 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
             ),
           ),
           const SizedBox(height: 8),
-
-          // Aide
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
@@ -786,18 +765,17 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
             ),
           ),
           const SizedBox(height: 16),
-
-          // Bouton récupérer
           SizedBox(
             width: double.infinity,
             height: 54,
             child: ElevatedButton.icon(
               onPressed: _isLoading ? null : _fetchGoogleSheet,
-              icon: const Icon(Icons.cloud_download_rounded, size: 24),
+              icon:
+                  const Icon(Icons.cloud_download_rounded, size: 24),
               label: const Text(
                 'RÉCUPÉRER LES DONNÉES',
-                style:
-                    TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                    fontSize: 15, fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue.shade600,
@@ -858,7 +836,8 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
   Widget _buildStatusBar() {
     final isSuccess = _statusMessage.contains('✅');
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding:
+          const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: isSuccess ? Colors.green.shade50 : Colors.orange.shade50,
         borderRadius: BorderRadius.circular(12),
@@ -872,8 +851,9 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
         children: [
           Icon(
             isSuccess ? Icons.check_circle : Icons.info_outline,
-            color:
-                isSuccess ? Colors.green.shade600 : Colors.orange.shade600,
+            color: isSuccess
+                ? Colors.green.shade600
+                : Colors.orange.shade600,
             size: 20,
           ),
           const SizedBox(width: 10),
@@ -895,7 +875,7 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
   }
 
   // =============================================
-  //         MODE D'IMPORT (Ajouter/Remplacer)
+  //         MODE D'IMPORT
   // =============================================
 
   Widget _buildImportMode() {
@@ -932,7 +912,7 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Option : Remplacer
+          // Remplacer
           GestureDetector(
             onTap: () => setState(() => _replaceAll = true),
             child: Container(
@@ -978,7 +958,7 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
                           ),
                         ),
                         Text(
-                          'Supprimer les anciens produits et importer les nouveaux',
+                          'Supprimer les anciens et importer les nouveaux',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade500,
@@ -992,7 +972,7 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
             ),
           ),
 
-          // Option : Ajouter
+          // Ajouter
           GestureDetector(
             onTap: () => setState(() => _replaceAll = false),
             child: Container(
@@ -1037,7 +1017,7 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
                           ),
                         ),
                         Text(
-                          'Conserver les produits actuels et ajouter les nouveaux',
+                          'Conserver les produits actuels et ajouter',
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey.shade500,
@@ -1056,7 +1036,7 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
   }
 
   // =============================================
-  //            APERÇU DES DONNÉES
+  //            APERÇU (SIMPLIFIÉ)
   // =============================================
 
   Widget _buildPreview() {
@@ -1075,7 +1055,6 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // En-tête
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Row(
@@ -1095,7 +1074,7 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
             ),
           ),
 
-          // Tableau
+          // Tableau simplifié (sans catégorie et unité)
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
@@ -1108,18 +1087,22 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
               ),
               dataTextStyle:
                   TextStyle(color: Colors.grey.shade800, fontSize: 12),
-              columnSpacing: 14,
+              columnSpacing: 18,
               dataRowMinHeight: 36,
               dataRowMaxHeight: 42,
               columns: const [
                 DataColumn(label: Text('#')),
                 DataColumn(label: Text('Nom')),
-                DataColumn(label: Text('Catégorie')),
-                DataColumn(label: Text('Prix')),
+                DataColumn(label: Text('Prix (DZ)')),
                 DataColumn(label: Text('Stock')),
                 DataColumn(label: Text('Code-barres')),
               ],
-              rows: _previewProducts.take(20).toList().asMap().entries.map(
+              rows: _previewProducts
+                  .take(20)
+                  .toList()
+                  .asMap()
+                  .entries
+                  .map(
                 (entry) {
                   final i = entry.key;
                   final p = entry.value;
@@ -1136,7 +1119,8 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
                               fontSize: 11))),
                       DataCell(
                         ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 120),
+                          constraints:
+                              const BoxConstraints(maxWidth: 140),
                           child: Text(
                             p.name,
                             overflow: TextOverflow.ellipsis,
@@ -1146,9 +1130,8 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
                           ),
                         ),
                       ),
-                      DataCell(_categoryBadge(p.category)),
                       DataCell(Text(
-                        '${p.price.toStringAsFixed(0)} FC',
+                        '${p.price.toStringAsFixed(0)} DZ',
                         style: TextStyle(
                           fontWeight: FontWeight.w600,
                           color: Colors.indigo.shade700,
@@ -1168,7 +1151,8 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
                       DataCell(Text(
                         p.barcode ?? '-',
                         style: TextStyle(
-                            color: Colors.grey.shade500, fontSize: 11),
+                            color: Colors.grey.shade500,
+                            fontSize: 11),
                       )),
                     ],
                   );
@@ -1177,7 +1161,6 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
             ),
           ),
 
-          // Si plus de 20 produits
           if (_previewProducts.length > 20)
             Padding(
               padding: const EdgeInsets.all(12),
@@ -1191,39 +1174,6 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _categoryBadge(String category) {
-    Color color;
-    switch (category) {
-      case 'Boissons':
-        color = Colors.blue;
-        break;
-      case 'Alimentation':
-        color = Colors.orange;
-        break;
-      case 'Hygiène':
-        color = Colors.purple;
-        break;
-      case 'Confiserie':
-        color = Colors.pink;
-        break;
-      default:
-        color = Colors.grey;
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        category,
-        style: TextStyle(
-            color: color, fontSize: 11, fontWeight: FontWeight.w600),
       ),
     );
   }
@@ -1242,7 +1192,9 @@ class _ImportProductsScreenState extends State<ImportProductsScreen> {
         label: Text(
           'IMPORTER ${_previewProducts.length} PRODUITS',
           style: const TextStyle(
-              fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1),
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1),
         ),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.indigo.shade700,

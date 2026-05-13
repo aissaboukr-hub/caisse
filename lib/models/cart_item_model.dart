@@ -11,6 +11,7 @@ class CartItemModel {
 
   double get totalPrice => product.price * quantity;
 
-  String get formattedTotal => '${totalPrice.toStringAsFixed(0)} FC';
-  String get formattedPrice => '${product.price.toStringAsFixed(0)} FC';
+  // ✅ DZ au lieu de FC
+  String get formattedTotal => '${totalPrice.toStringAsFixed(0)} DZ';
+  String get formattedPrice => '${product.price.toStringAsFixed(0)} DZ';
 }
