@@ -49,55 +49,85 @@ class ImportService {
 
   // =============================================
   //     IMPORT DEPUIS GOOGLE SHEETS (CSV)
+  //     ⚠️ CORRIGÉ avec 3 méthodes de fallback
   // =============================================
 
   Future<List<ProductModel>> importFromGoogleSheets(String url) async {
     try {
+      // 1. Extraire l'ID de la feuille Google Sheets
       final sheetId = _extractSheetId(url);
-      if (sheetId == null) {
+      if (sheetId == null || sheetId.isEmpty) {
         throw Exception(
-          'URL Google Sheets invalide.\n'
-          'Format attendu:\n'
-          'https://docs.google.com/spreadsheets/d/SHEET_ID/...',
+          'URL Google Sheets invalide.\n\n'
+          'Formats acceptés :\n'
+          '• https://docs.google.com/spreadsheets/d/SHEET_ID/edit\n'
+          '• https://docs.google.com/spreadsheets/d/SHEET_ID/edit#gid=0\n'
+          '• https://docs.google.com/spreadsheets/d/SHEET_ID/edit?usp=sharing',
         );
       }
 
+      // 2. Extraire le gid (ID de feuille spécifique)
       final gid = _extractGid(url);
-      final csvUrl =
-          'https://docs.google.com/spreadsheets/d/$sheetId/export?format=csv&gid=$gid';
+      debugPrint('Sheet ID: $sheetId, GID: $gid');
 
-      debugPrint('Téléchargement CSV: $csvUrl');
+      // 3. Essayer plusieurs méthodes de téléchargement
+      String? csvContent;
 
-      final response = await http.get(
-        Uri.parse(csvUrl),
-        headers: {'Accept': 'text/csv; charset=utf-8'},
+      // ---- MÉTHODE 1 : /export?format=csv ----
+      csvContent = await _tryDownload(
+        'https://docs.google.com/spreadsheets/d/$sheetId/export?format=csv&gid=$gid',
+        'export',
       );
 
-      if (response.statusCode != 200) {
-        if (response.statusCode == 403) {
-          throw Exception(
-            'Accès refusé. Assurez-vous que le Google Sheet est '
-            'partagé avec "Tous les détenteurs du lien".',
-          );
-        }
-        if (response.statusCode == 404) {
-          throw Exception('Google Sheet introuvable. Vérifiez l\'URL.');
-        }
-        throw Exception(
-          'Erreur de téléchargement (code: ${response.statusCode})',
+      // ---- MÉTHODE 2 : /pub?output=csv (feuille publiée) ----
+      if (csvContent == null) {
+        csvContent = await _tryDownload(
+          'https://docs.google.com/spreadsheets/d/$sheetId/pub?output=csv&gid=$gid',
+          'pub',
         );
       }
 
-      final csvString = utf8.decode(response.bodyBytes);
+      // ---- MÉTHODE 3 : /gviz/tq (API interne Google) ----
+      if (csvContent == null) {
+        csvContent = await _tryDownload(
+          'https://docs.google.com/spreadsheets/d/$sheetId/gviz/tq?tqx=out:csv&gid=$gid',
+          'gviz',
+        );
+      }
+
+      // ---- MÉTHODE 4 : Sans le gid ----
+      if (csvContent == null) {
+        csvContent = await _tryDownload(
+          'https://docs.google.com/spreadsheets/d/$sheetId/export?format=csv',
+          'export-sans-gid',
+        );
+      }
+
+      if (csvContent == null) {
+        throw Exception(
+          'Impossible d\'accéder au Google Sheet.\n\n'
+          'Vérifiez que :\n'
+          '1. Le lien est correct\n'
+          '2. Le Sheet est partagé avec "Tous les détenteurs du lien"\n'
+          '3. Le Sheet n\'est pas protégé par mot de passe\n\n'
+          'Astuce : Dans Google Sheets → Fichier → Partager → '
+          '→ "Tous les détenteurs du lien"',
+        );
+      }
+
+      // 4. Décoder le CSV
       final List<List<dynamic>> csvRows = const CsvToListConverter(
         shouldParseNumbers: false,
         eol: '\n',
-      ).convert(csvString);
+      ).convert(csvContent);
 
+      // 5. Convertir en List<List<String>>
       final List<List<String>> rows = csvRows
-          .map((row) => row.map((cell) => cell.toString().trim()).toList())
+          .map((row) =>
+              row.map((cell) => _cleanCell(cell.toString())).toList())
           .toList();
 
+      // 6. Parser les produits
       return _parseRows(rows);
     } catch (e) {
       debugPrint('Erreur import Google Sheets: $e');
@@ -106,21 +136,76 @@ class ImportService {
   }
 
   // =============================================
+  //     ESSAYER UNE URL DE TÉLÉCHARGEMENT
+  // =============================================
+
+  Future<String?> _tryDownload(String downloadUrl, String method) async {
+    try {
+      debugPrint('[$method] Tentative: $downloadUrl');
+
+      final response = await http.get(
+        Uri.parse(downloadUrl),
+        headers: {
+          'Accept': 'text/csv, text/plain, */*',
+          'User-Agent': 'Mozilla/5.0 (Flutter App)',
+        },
+      ).timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw Exception('Délai d\'attente dépassé'),
+      );
+
+      debugPrint('[$method] Status: ${response.statusCode}');
+
+      if (response.statusCode == 200) {
+        final body = utf8.decode(response.bodyBytes);
+
+        // Vérifier que c'est bien du CSV (pas une page HTML d'erreur)
+        if (body.contains('<!DOCTYPE html>') ||
+            body.contains('<html') ||
+            body.contains('ServiceLogin')) {
+          debugPrint('[$method] Reçu HTML au lieu de CSV → ignoré');
+          return null;
+        }
+
+        // Vérifier qu'il y a du contenu
+        if (body.trim().isEmpty) {
+          debugPrint('[$method] Contenu vide → ignoré');
+          return null;
+        }
+
+        debugPrint('[$method] ✅ Succès ! ${body.length} caractères');
+        return body;
+      }
+
+      debugPrint('[$method] ❌ Échec (${response.statusCode})');
+      return null;
+    } catch (e) {
+      debugPrint('[$method] ❌ Exception: $e');
+      return null;
+    }
+  }
+
+  // =============================================
   //        PARSER LES LIGNES EN PRODUITS
-  //  ⚠️ SIMPLIFIÉ : seulement Nom, Prix, Stock, Code-barres
   // =============================================
 
   List<ProductModel> _parseRows(List<List<String>> rows) {
     if (rows.isEmpty) return [];
 
-    // 1. Détecter les colonnes depuis l'en-tête (première ligne)
+    // Nettoyer les lignes vides
+    rows.removeWhere(
+        (row) => row.isEmpty || row.every((cell) => cell.trim().isEmpty));
+
+    if (rows.isEmpty) return [];
+
+    // 1. Détecter les colonnes depuis l'en-tête
     final headers =
         rows.first.map((h) => h.toLowerCase().trim()).toList();
 
     final nameIdx = _findColumn(headers, [
       'nom', 'name', 'produit', 'product', 'designation',
       'désignation', 'designation', 'libellé', 'libelle',
-      'article', 'intitulé', 'intitule', 'désignation',
+      'article', 'intitulé', 'intitule',
     ]);
 
     final priceIdx = _findColumn(headers, [
@@ -143,7 +228,6 @@ class ImportService {
       'prix=$priceIdx, stock=$stockIdx, barcode=$barcodeIdx',
     );
 
-    // Si pas de colonne nom trouvée, utiliser la première colonne
     final effectiveNameIdx = nameIdx >= 0 ? nameIdx : 0;
 
     // 2. Parcourir les données (ignorer l'en-tête)
@@ -153,7 +237,6 @@ class ImportService {
     for (int i = 1; i < rows.length; i++) {
       final row = rows[i];
 
-      // Ignorer les lignes vides
       if (row.isEmpty || row.every((cell) => cell.trim().isEmpty)) {
         continue;
       }
@@ -168,10 +251,10 @@ class ImportService {
       products.add(ProductModel(
         id: '${idCounter++}',
         name: name,
-        category: 'Divers',    // ← Toujours "Divers"
+        category: 'Divers',
         price: price,
         stock: stock,
-        unit: 'piece',         // ← Toujours "piece"
+        unit: 'piece',
         barcode: barcode.isNotEmpty ? barcode : null,
         isAvailable: true,
         createdAt: DateTime.now(),
@@ -213,28 +296,90 @@ class ImportService {
     return value.toString().trim();
   }
 
+  /// Nettoyer une cellule CSV (BOM, guillemets, espaces)
+  String _cleanCell(String value) {
+    var v = value.trim();
+    // Supprimer BOM UTF-8
+    if (v.startsWith('\uFEFF')) {
+      v = v.substring(1);
+    }
+    // Supprimer guillemets CSV
+    if (v.startsWith('"') && v.endsWith('"') && v.length >= 2) {
+      v = v.substring(1, v.length - 1);
+    }
+    return v.trim();
+  }
+
   double _parseDouble(String value) {
     if (value.isEmpty) return 0;
-    final cleaned = value.replaceAll(',', '.').replaceAll(' ', '');
+    final cleaned = value
+        .replaceAll(',', '.')
+        .replaceAll(' ', '')
+        .replaceAll('"', '')
+        .replaceAll("'", '');
     return double.tryParse(cleaned) ?? 0;
   }
 
   int _parseInt(String value) {
     if (value.isEmpty) return 0;
-    final cleaned = value.replaceAll(' ', '').replaceAll('.', '');
+    final cleaned = value
+        .replaceAll(' ', '')
+        .replaceAll('.', '')
+        .replaceAll('"', '')
+        .replaceAll("'", '');
     return int.tryParse(cleaned) ??
         (double.tryParse(cleaned)?.round() ?? 0);
   }
 
+  // =============================================
+  //     EXTRAIRE L'ID DEPUIS L'URL GOOGLE SHEETS
+  //     ⚠️ CORRIGÉ pour supporter tous les formats
+  // =============================================
+
   String? _extractSheetId(String url) {
-    final regex = RegExp(r'/spreadsheets/d/([a-zA-Z0-9_-]+)');
-    final match = regex.firstMatch(url);
-    return match?.group(1);
+    // Nettoyer l'URL
+    var cleanUrl = url.trim();
+
+    // Format 1: https://docs.google.com/spreadsheets/d/SHEET_ID/...
+    final regex1 = RegExp(r'/spreadsheets/d/([a-zA-Z0-9_-]+)');
+    final match1 = regex1.firstMatch(cleanUrl);
+    if (match1 != null) {
+      return match1.group(1);
+    }
+
+    // Format 2: https://docs.google.com/spreadsheets/d/SHEET_ID
+    final regex2 =
+        RegExp(r'spreadsheets/d/([a-zA-Z0-9_-]{20,})');
+    final match2 = regex2.firstMatch(cleanUrl);
+    if (match2 != null) {
+      return match2.group(1);
+    }
+
+    // Format 3: Si l'utilisateur a collé juste l'ID
+    final regex3 = RegExp(r'^[a-zA-Z0-9_-]{30,}$');
+    if (regex3.hasMatch(cleanUrl)) {
+      return cleanUrl;
+    }
+
+    return null;
   }
 
+  /// Extraire le gid (ID de feuille spécifique)
   String _extractGid(String url) {
+    // gid= dans l'URL
     final regex = RegExp(r'gid=([0-9]+)');
     final match = regex.firstMatch(url);
-    return match?.group(1) ?? '0';
+    if (match != null) {
+      return match.group(1) ?? '0';
+    }
+
+    // #gid= dans le fragment
+    final regex2 = RegExp(r'#gid=([0-9]+)');
+    final match2 = regex2.firstMatch(url);
+    if (match2 != null) {
+      return match2.group(1) ?? '0';
+    }
+
+    return '0';
   }
 }
