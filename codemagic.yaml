@@ -2,25 +2,36 @@ workflows:
   flutter-app-workflow:
     name: caisse
     max_build_duration: 60
+
     environment:
       flutter: stable
       java: 17
+
     cache:
       cache_paths:
         - ~/.pub-cache
         - build
+
     scripts:
+      - name: Flutter doctor
+        script: flutter doctor
+
       - name: Clean project
         script: flutter clean
+
       - name: Get dependencies
         script: flutter pub get
+
       - name: Analyze project
         script: flutter analyze || true
+
       - name: Run tests
         script: flutter test || true
-      - name: Build APK (Release)
+
+      - name: Build APK
         script: flutter build apk --release
-      - name: Build AAB (Play Store)
+
+      - name: Build AAB
         script: flutter build appbundle --release
 
     artifacts:
