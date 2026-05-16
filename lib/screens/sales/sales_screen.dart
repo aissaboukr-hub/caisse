@@ -6,6 +6,7 @@ import '../../services/cart_service.dart';
 import '../../services/sale_service.dart';
 import '../../services/printer_service.dart';
 import '../history/sales_history_screen.dart';
+import '../settings/printer_settings_screen.dart';
 import 'barcode_scanner_screen.dart';
 
 class SalesScreen extends StatefulWidget {
@@ -71,7 +72,7 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   // =============================================
-  //        HISTORIQUE DES VENTES (CAISSIER)
+  //        HISTORIQUE DES VENTES
   // =============================================
 
   void _openSalesHistory() {
@@ -81,6 +82,19 @@ class _SalesScreenState extends State<SalesScreen> {
         builder: (_) => const SalesHistoryScreen(
           userRole: 'caissier',
         ),
+      ),
+    );
+  }
+
+  // =============================================
+  //        PARAMÈTRES IMPRIMANTE
+  // =============================================
+
+  void _openPrinterSettings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const PrinterSettingsScreen(),
       ),
     );
   }
@@ -380,7 +394,6 @@ class _SalesScreenState extends State<SalesScreen> {
 
   // =============================================
   //       IMPRIMER / FINALISER LA VENTE
-  //  ⚠️ NOM COMPLET SUR 2 LIGNES
   // =============================================
 
   void _showPrintDialog() {
@@ -552,7 +565,7 @@ class _SalesScreenState extends State<SalesScreen> {
                                   crossAxisAlignment:
                                       CrossAxisAlignment.start,
                                   children: [
-                                    // LIGNE 1 : NUMÉRO + QUANTITÉ + NOM
+                                    // LIGNE 1
                                     Row(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.start,
@@ -610,7 +623,7 @@ class _SalesScreenState extends State<SalesScreen> {
 
                                     const SizedBox(height: 4),
 
-                                    // LIGNE 2 : P.U. + MONTANT
+                                    // LIGNE 2
                                     Padding(
                                       padding:
                                           const EdgeInsets.only(
@@ -987,7 +1000,7 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   // =============================================
-  //     TRAITEMENT DE LA VENTE + IMPRESSION
+  //     TRAITEMENT VENTE + IMPRESSION
   // =============================================
 
   Future<void> _processSale(double amountPaid) async {
@@ -1071,7 +1084,7 @@ class _SalesScreenState extends State<SalesScreen> {
               ),
               const SizedBox(height: 12),
 
-              // ═══ STATUT IMPRESSION ═══
+              // Statut impression
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -1265,7 +1278,7 @@ class _SalesScreenState extends State<SalesScreen> {
       ),
       child: Column(
         children: [
-          // ---- LIGNE 1 : Titre + Caissier ----
+          // ---- LIGNE 1 : Titre + Imprimante + Caissier ----
           Row(
             children: [
               Container(
@@ -1301,9 +1314,30 @@ class _SalesScreenState extends State<SalesScreen> {
                   ],
                 ),
               ),
+
+              // 🖨️ BOUTON IMPRIMANTE
+              GestureDetector(
+                onTap: _openPrinterSettings,
+                child: Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.print_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+
+              // Badge caissier
               Container(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 12, vertical: 7),
+                    horizontal: 10, vertical: 7),
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -1311,13 +1345,13 @@ class _SalesScreenState extends State<SalesScreen> {
                 child: Row(
                   children: [
                     const Icon(Icons.person_outline,
-                        color: Colors.white, size: 18),
-                    const SizedBox(width: 6),
+                        color: Colors.white, size: 16),
+                    const SizedBox(width: 4),
                     Text(
                       widget.cashierName,
                       style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: FontWeight.w500),
                     ),
                   ],
@@ -1893,7 +1927,7 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   // =============================================
-  //     CARTE ARTICLE PANIER (NOM COMPLET)
+  //     CARTE ARTICLE PANIER
   // =============================================
 
   Widget _buildCartItemCard(dynamic item, int index) {
