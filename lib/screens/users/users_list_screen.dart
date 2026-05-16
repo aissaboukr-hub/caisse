@@ -76,6 +76,21 @@ class _UsersListScreenState extends State<UsersListScreen> {
   }
 
   // =============================================
+  //       NAVIGUER VERS L'HISTORIQUE (ADMIN)
+  // =============================================
+
+  void _openSalesHistory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const SalesHistoryScreen(
+          userRole: 'admin',
+        ),
+      ),
+    );
+  }
+
+  // =============================================
   //       CONFIRMER LA SUPPRESSION
   // =============================================
 
@@ -110,13 +125,11 @@ class _UsersListScreenState extends State<UsersListScreen> {
               setState(() {});
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content:
-                      Text('🗑️ ${user.fullName} supprimé'),
+                  content: Text('🗑️ ${user.fullName} supprimé'),
                   backgroundColor: Colors.red.shade500,
                   behavior: SnackBarBehavior.floating,
                   shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12)),
                   margin: const EdgeInsets.all(16),
                 ),
               );
@@ -161,23 +174,16 @@ class _UsersListScreenState extends State<UsersListScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          // 📜 Historique des ventes
+          // ---- HISTORIQUE VENTES ----
           Tooltip(
             message: 'Historique des ventes',
             child: IconButton(
               icon: const Icon(Icons.history_rounded),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const SalesHistoryScreen(),
-                  ),
-                );
-              },
+              onPressed: _openSalesHistory,
             ),
           ),
 
-          // 📥 Importer produits
+          // ---- IMPORT PRODUITS ----
           Tooltip(
             message: 'Importer des produits',
             child: IconButton(
@@ -186,7 +192,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
             ),
           ),
 
-          // 👤 Ajouter utilisateur
+          // ---- AJOUTER UTILISATEUR ----
           Tooltip(
             message: 'Ajouter un utilisateur',
             child: IconButton(
@@ -217,8 +223,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
                         onEdit: () => _openForm(user: user),
                         onDelete: () => _confirmDelete(user),
                         onToggleStatus: () {
-                          _userService
-                              .toggleUserStatus(user.id);
+                          _userService.toggleUserStatus(user.id);
                           setState(() {});
                         },
                       );
@@ -243,7 +248,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
   }
 
   // =============================================
-  //        WIDGET STATISTIQUES (HEADER)
+  //        WIDGET STATISTIQUES
   // =============================================
 
   Widget _buildStatsHeader() {
@@ -338,8 +343,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
             setState(() => _searchQuery = value),
         decoration: InputDecoration(
           hintText: 'Rechercher un utilisateur...',
-          hintStyle:
-              TextStyle(color: Colors.grey.shade400),
+          hintStyle: TextStyle(color: Colors.grey.shade400),
           prefixIcon: Icon(Icons.search,
               color: Colors.indigo.shade300),
           suffixIcon: _searchQuery.isNotEmpty
@@ -374,14 +378,12 @@ class _UsersListScreenState extends State<UsersListScreen> {
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       child: Row(
         children: [
-          _buildFilterChip(
-              'all', 'Tous', Icons.people),
+          _buildFilterChip('all', 'Tous', Icons.people),
+          const SizedBox(width: 8),
+          _buildFilterChip('admin', 'Admins', Icons.shield),
           const SizedBox(width: 8),
           _buildFilterChip(
-              'admin', 'Admins', Icons.shield),
-          const SizedBox(width: 8),
-          _buildFilterChip('caissier', 'Caissiers',
-              Icons.shopping_cart),
+              'caissier', 'Caissiers', Icons.shopping_cart),
         ],
       ),
     );
@@ -391,8 +393,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
       String value, String label, IconData icon) {
     final isSelected = _filterRole == value;
     return GestureDetector(
-      onTap: () =>
-          setState(() => _filterRole = value),
+      onTap: () => setState(() => _filterRole = value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(
@@ -455,10 +456,8 @@ class _UsersListScreenState extends State<UsersListScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Essayez une autre recherche\n'
-            'ou ajoutez un utilisateur',
-            style:
-                TextStyle(color: Colors.grey.shade400),
+            'Essayez une autre recherche\nou ajoutez un utilisateur',
+            style: TextStyle(color: Colors.grey.shade400),
             textAlign: TextAlign.center,
           ),
         ],

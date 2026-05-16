@@ -4,7 +4,12 @@ import '../../models/sale_model.dart';
 import '../../services/sale_service.dart';
 
 class SalesHistoryScreen extends StatefulWidget {
-  const SalesHistoryScreen({super.key});
+  final String userRole; // 'admin' ou 'caissier'
+
+  const SalesHistoryScreen({
+    super.key,
+    this.userRole = 'admin',
+  });
 
   @override
   State<SalesHistoryScreen> createState() => _SalesHistoryScreenState();
@@ -15,9 +20,11 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   String _searchQuery = '';
-  String _selectedFilter = 'all'; // 'all', 'today', 'week', 'month'
+  String _selectedFilter = 'all';
   DateTime? _customStartDate;
   DateTime? _customEndDate;
+
+  bool get _isAdmin => widget.userRole == 'admin';
 
   @override
   void dispose() {
@@ -32,7 +39,6 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
   List<SaleModel> get _filteredSales {
     var sales = _saleService.sales;
 
-    // Filtre par période
     final now = DateTime.now();
     switch (_selectedFilter) {
       case 'today':
@@ -54,15 +60,14 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
         break;
     }
 
-    // Filtre par recherche
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       sales = sales.where((s) {
         return s.id.toLowerCase().contains(q) ||
             s.cashierName.toLowerCase().contains(q) ||
             s.formattedDate.contains(q) ||
-            s.items.any((item) =>
-                item.product.name.toLowerCase().contains(q));
+            s.items.any(
+                (item) => item.product.name.toLowerCase().contains(q));
       }).toList();
     }
 
@@ -127,10 +132,12 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
   }
 
   // =============================================
-  //        CONFIRMER SUPPRESSION
+  //     CONFIRMER SUPPRESSION (ADMIN SEULEMENT)
   // =============================================
 
   void _confirmDeleteSale(SaleModel sale) {
+    if (!_isAdmin) return; // 🛡️ Sécurité
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -203,9 +210,12 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
         elevation: 0,
         backgroundColor: Colors.indigo.shade700,
         foregroundColor: Colors.white,
-        title: const Text(
-          'Historique des Ventes',
-          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 19),
+        title: Text(
+          _isAdmin
+              ? 'Historique des Ventes'
+              : 'Mes Ventes',
+          style: const TextStyle(
+              fontWeight: FontWeight.w600, fontSize: 19),
         ),
         centerTitle: true,
         leading: IconButton(
@@ -213,8 +223,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          // Vider l'historique
-          if (_saleService.totalSales > 0)
+          // ---- MENU (ADMIN SEULEMENT) ----
+          if (_isAdmin && _saleService.totalSales > 0)
             PopupMenuButton<String>(
               icon: const Icon(Icons.more_vert),
               shape: RoundedRectangleBorder(
@@ -229,7 +239,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                   value: 'clear',
                   child: Row(
                     children: [
-                      Icon(Icons.delete_sweep, color: Colors.red, size: 20),
+                      Icon(Icons.delete_sweep,
+                          color: Colors.red, size: 20),
                       SizedBox(width: 10),
                       Text('Vider l\'historique',
                           style: TextStyle(color: Colors.red)),
@@ -259,7 +270,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
             child: filteredSales.isEmpty
                 ? _buildEmptyState()
                 : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12),
                     itemCount: filteredSales.length,
                     itemBuilder: (context, index) {
                       return _buildSaleCard(filteredSales[index]);
@@ -310,7 +322,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon) {
+  Widget _buildStatItem(
+      String label, String value, IconData icon) {
     return Expanded(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -375,16 +388,18 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
       ),
       child: TextField(
         controller: _searchController,
-        onChanged: (value) => setState(() => _searchQuery = value),
+        onChanged: (value) =>
+            setState(() => _searchQuery = value),
         decoration: InputDecoration(
           hintText: 'Rechercher (ticket, caissier, article)...',
-          hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+          hintStyle: TextStyle(
+              color: Colors.grey.shade400, fontSize: 14),
           prefixIcon:
               Icon(Icons.search, color: Colors.indigo.shade300),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
-                  icon:
-                      Icon(Icons.clear, color: Colors.grey.shade400),
+                  icon: Icon(Icons.clear,
+                      color: Colors.grey.shade400),
                   onPressed: () {
                     _searchController.clear();
                     setState(() => _searchQuery = '');
@@ -429,7 +444,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
     );
   }
 
-  Widget _filterChip(String value, String label, IconData icon) {
+  Widget _filterChip(
+      String value, String label, IconData icon) {
     final isSelected = _selectedFilter == value;
     return GestureDetector(
       onTap: () => setState(() => _selectedFilter = value),
@@ -437,7 +453,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.indigo.shade600 : Colors.white,
+          color:
+              isSelected ? Colors.indigo.shade600 : Colors.white,
           borderRadius: BorderRadius.circular(25),
           border: Border.all(
             color: isSelected
@@ -450,16 +467,18 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
           children: [
             Icon(icon,
                 size: 16,
-                color:
-                    isSelected ? Colors.white : Colors.grey.shade600),
+                color: isSelected
+                    ? Colors.white
+                    : Colors.grey.shade600),
             const SizedBox(width: 6),
             Text(
               label,
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color:
-                    isSelected ? Colors.white : Colors.grey.shade600,
+                color: isSelected
+                    ? Colors.white
+                    : Colors.grey.shade600,
               ),
             ),
           ],
@@ -476,7 +495,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.indigo.shade600 : Colors.white,
+          color:
+              isSelected ? Colors.indigo.shade600 : Colors.white,
           borderRadius: BorderRadius.circular(25),
           border: Border.all(
             color: isSelected
@@ -489,18 +509,21 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
           children: [
             Icon(Icons.edit_calendar,
                 size: 16,
-                color:
-                    isSelected ? Colors.white : Colors.grey.shade600),
+                color: isSelected
+                    ? Colors.white
+                    : Colors.grey.shade600),
             const SizedBox(width: 6),
             Text(
-              _selectedFilter == 'custom' && _customStartDate != null
+              _selectedFilter == 'custom' &&
+                      _customStartDate != null
                   ? '${_customStartDate!.day}/${_customStartDate!.month} - ${_customEndDate!.day}/${_customEndDate!.month}'
                   : 'Personnalisé',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color:
-                    isSelected ? Colors.white : Colors.grey.shade600,
+                color: isSelected
+                    ? Colors.white
+                    : Colors.grey.shade600,
               ),
             ),
           ],
@@ -558,7 +581,7 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Ligne 1 : ID + Date
+                    // Ligne 1 : ID + Heure
                     Row(
                       children: [
                         Text(
@@ -571,7 +594,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                         ),
                         const Spacer(),
                         Icon(Icons.access_time,
-                            size: 13, color: Colors.grey.shade400),
+                            size: 13,
+                            color: Colors.grey.shade400),
                         const SizedBox(width: 4),
                         Text(
                           sale.formattedTime,
@@ -588,7 +612,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                     Row(
                       children: [
                         Icon(Icons.person_outline,
-                            size: 14, color: Colors.grey.shade400),
+                            size: 14,
+                            color: Colors.grey.shade400),
                         const SizedBox(width: 4),
                         Text(
                           sale.cashierName,
@@ -599,7 +624,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                         ),
                         const SizedBox(width: 12),
                         Icon(Icons.shopping_bag_outlined,
-                            size: 14, color: Colors.grey.shade400),
+                            size: 14,
+                            color: Colors.grey.shade400),
                         const SizedBox(width: 4),
                         Text(
                           '${sale.totalItems} article(s)',
@@ -616,7 +642,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                     Row(
                       children: [
                         Icon(Icons.calendar_today,
-                            size: 13, color: Colors.grey.shade400),
+                            size: 13,
+                            color: Colors.grey.shade400),
                         const SizedBox(width: 4),
                         Text(
                           sale.formattedDate,
@@ -631,7 +658,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                               horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
                             color: Colors.green.shade50,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius:
+                                BorderRadius.circular(8),
                           ),
                           child: Text(
                             _paymentLabel(sale.paymentMethod),
@@ -687,7 +715,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
   }
 
   // =============================================
-  //         DÉTAILS DU TICKET (COMPLET)
+  //     DÉTAILS DU TICKET (COMPLET)
+  //  ⚠️ Bouton supprimer visible SEULEMENT pour admin
   // =============================================
 
   void _showTicketDetails(SaleModel sale) {
@@ -738,12 +767,14 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                                 Colors.indigo.shade500
                               ],
                             ),
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius:
+                                BorderRadius.circular(20),
                           ),
                           child: Column(
                             children: [
                               const Icon(Icons.receipt_long,
-                                  color: Colors.white, size: 40),
+                                  color: Colors.white,
+                                  size: 40),
                               const SizedBox(height: 10),
                               const Text(
                                 'TICKET DE VENTE',
@@ -756,27 +787,32 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                               ),
                               const SizedBox(height: 12),
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
+                                padding:
+                                    const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 8),
                                 decoration: BoxDecoration(
-                                  color:
-                                      Colors.white.withOpacity(0.15),
+                                  color: Colors.white
+                                      .withOpacity(0.15),
                                   borderRadius:
                                       BorderRadius.circular(12),
                                 ),
                                 child: Column(
                                   children: [
-                                    _headerRow('N° Ticket',
+                                    _headerRow(
+                                        'N° Ticket',
                                         '#${sale.id.substring(sale.id.length - 6)}'),
                                     const SizedBox(height: 4),
                                     _headerRow('Date',
                                         sale.formattedDateTime),
                                     const SizedBox(height: 4),
-                                    _headerRow(
-                                        'Caissier', sale.cashierName),
+                                    _headerRow('Caissier',
+                                        sale.cashierName),
                                     const SizedBox(height: 4),
-                                    _headerRow('Paiement',
-                                        _paymentLabel(sale.paymentMethod)),
+                                    _headerRow(
+                                        'Paiement',
+                                        _paymentLabel(
+                                            sale.paymentMethod)),
                                   ],
                                 ),
                               ),
@@ -790,7 +826,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius:
+                                BorderRadius.circular(16),
                             border: Border.all(
                                 color: Colors.grey.shade200),
                           ),
@@ -801,14 +838,16 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                               Row(
                                 children: [
                                   Icon(Icons.list_alt,
-                                      color: Colors.indigo.shade600,
+                                      color:
+                                          Colors.indigo.shade600,
                                       size: 20),
                                   const SizedBox(width: 8),
                                   Text(
                                     'Articles (${sale.items.length} lignes • ${sale.totalItems} articles)',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.indigo.shade800,
+                                      color:
+                                          Colors.indigo.shade800,
                                       fontSize: 14,
                                     ),
                                   ),
@@ -818,8 +857,10 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
 
                               // En-tête
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 8),
+                                padding:
+                                    const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 8),
                                 decoration: BoxDecoration(
                                   color: Colors.indigo.shade50,
                                   borderRadius:
@@ -835,7 +876,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                                                   FontWeight.bold,
                                               fontSize: 11,
                                               color: Colors
-                                                  .indigo.shade700)),
+                                                  .indigo
+                                                  .shade700)),
                                     ),
                                     SizedBox(
                                       width: 35,
@@ -845,7 +887,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                                                   FontWeight.bold,
                                               fontSize: 11,
                                               color: Colors
-                                                  .indigo.shade700)),
+                                                  .indigo
+                                                  .shade700)),
                                     ),
                                     Expanded(
                                       child: Text('DÉSIGNATION',
@@ -854,50 +897,58 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                                                   FontWeight.bold,
                                               fontSize: 11,
                                               color: Colors
-                                                  .indigo.shade700)),
+                                                  .indigo
+                                                  .shade700)),
                                     ),
                                     SizedBox(
                                       width: 60,
                                       child: Text('P.U.',
-                                          textAlign: TextAlign.right,
+                                          textAlign:
+                                              TextAlign.right,
                                           style: TextStyle(
                                               fontWeight:
                                                   FontWeight.bold,
                                               fontSize: 11,
                                               color: Colors
-                                                  .indigo.shade700)),
+                                                  .indigo
+                                                  .shade700)),
                                     ),
                                     SizedBox(
                                       width: 75,
                                       child: Text('TOTAL',
-                                          textAlign: TextAlign.right,
+                                          textAlign:
+                                              TextAlign.right,
                                           style: TextStyle(
                                               fontWeight:
                                                   FontWeight.bold,
                                               fontSize: 11,
                                               color: Colors
-                                                  .indigo.shade700)),
+                                                  .indigo
+                                                  .shade700)),
                                     ),
                                   ],
                                 ),
                               ),
 
-                              // Articles (TOUS)
-                              ...List.generate(sale.items.length,
-                                  (index) {
+                              // TOUS les articles
+                              ...List.generate(
+                                  sale.items.length, (index) {
                                 final item = sale.items[index];
                                 final isEven = index % 2 == 0;
 
                                 return Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 10),
+                                  padding:
+                                      const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 10),
                                   decoration: BoxDecoration(
                                     color: isEven
                                         ? Colors.white
                                         : Colors.grey.shade50,
                                     border: Border(
                                       bottom: BorderSide(
-                                        color: Colors.grey.shade200,
+                                        color:
+                                            Colors.grey.shade200,
                                         width: 0.5,
                                       ),
                                     ),
@@ -910,8 +961,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                                           '${index + 1}',
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color:
-                                                Colors.grey.shade500,
+                                            color: Colors
+                                                .grey.shade500,
                                           ),
                                         ),
                                       ),
@@ -923,18 +974,20 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                                                   .symmetric(
                                                   horizontal: 6,
                                                   vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color:
-                                                Colors.indigo.shade600,
+                                          decoration:
+                                              BoxDecoration(
+                                            color: Colors
+                                                .indigo.shade600,
                                             borderRadius:
-                                                BorderRadius.circular(
-                                                    4),
+                                                BorderRadius
+                                                    .circular(4),
                                           ),
                                           child: Text(
                                             '${item.quantity}',
                                             textAlign:
                                                 TextAlign.center,
-                                            style: const TextStyle(
+                                            style:
+                                                const TextStyle(
                                               color: Colors.white,
                                               fontWeight:
                                                   FontWeight.bold,
@@ -947,7 +1000,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                                       Expanded(
                                         child: Text(
                                           item.product.name,
-                                          style: const TextStyle(
+                                          style:
+                                              const TextStyle(
                                             fontWeight:
                                                 FontWeight.w600,
                                             fontSize: 13,
@@ -961,11 +1015,12 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                                         width: 60,
                                         child: Text(
                                           '${item.product.price.toStringAsFixed(0)}',
-                                          textAlign: TextAlign.right,
+                                          textAlign:
+                                              TextAlign.right,
                                           style: TextStyle(
                                             fontSize: 12,
-                                            color:
-                                                Colors.grey.shade600,
+                                            color: Colors
+                                                .grey.shade600,
                                           ),
                                         ),
                                       ),
@@ -973,7 +1028,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                                         width: 75,
                                         child: Text(
                                           '${item.totalPrice.toStringAsFixed(0)} DZ',
-                                          textAlign: TextAlign.right,
+                                          textAlign:
+                                              TextAlign.right,
                                           style: TextStyle(
                                             fontWeight:
                                                 FontWeight.bold,
@@ -997,7 +1053,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: Colors.indigo.shade50,
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius:
+                                BorderRadius.circular(16),
                             border: Border.all(
                                 color: Colors.indigo.shade100),
                           ),
@@ -1010,7 +1067,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                               Divider(
                                   color: Colors.indigo.shade200,
                                   height: 16),
-                              _summaryRow('TOTAL',
+                              _summaryRow(
+                                  'TOTAL',
                                   '${sale.totalAmount.toStringAsFixed(0)} DZ',
                                   isBold: true),
                               _summaryRow('Montant payé',
@@ -1025,36 +1083,48 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                         // ---- ACTIONS ----
                         Row(
                           children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  _confirmDeleteSale(sale);
-                                },
-                                icon: const Icon(Icons.delete_outline,
-                                    size: 18, color: Colors.red),
-                                label: Text('Supprimer',
-                                    style: TextStyle(
-                                        color: Colors.red.shade600)),
-                                style: OutlinedButton.styleFrom(
-                                  padding:
-                                      const EdgeInsets.symmetric(
-                                          vertical: 14),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius:
-                                        BorderRadius.circular(14),
+                            // 🛡️ BOUTON SUPPRIMER : ADMIN SEULEMENT
+                            if (_isAdmin) ...[
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    Navigator.pop(ctx);
+                                    _confirmDeleteSale(sale);
+                                  },
+                                  icon: const Icon(
+                                      Icons.delete_outline,
+                                      size: 18,
+                                      color: Colors.red),
+                                  label: Text('Supprimer',
+                                      style: TextStyle(
+                                          color: Colors
+                                              .red.shade600)),
+                                  style: OutlinedButton.styleFrom(
+                                    padding:
+                                        const EdgeInsets.symmetric(
+                                            vertical: 14),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius:
+                                          BorderRadius.circular(
+                                              14),
+                                    ),
+                                    side: BorderSide(
+                                        color:
+                                            Colors.red.shade200),
                                   ),
-                                  side: BorderSide(
-                                      color: Colors.red.shade200),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
+                              const SizedBox(width: 12),
+                            ],
+
+                            // BOUTON FERMER (toujours visible)
                             Expanded(
-                              flex: 2,
+                              flex: _isAdmin ? 2 : 1,
                               child: ElevatedButton.icon(
-                                onPressed: () => Navigator.pop(ctx),
-                                icon: const Icon(Icons.close, size: 18),
+                                onPressed: () =>
+                                    Navigator.pop(ctx),
+                                icon: const Icon(Icons.close,
+                                    size: 18),
                                 label: const Text('Fermer'),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor:
@@ -1091,7 +1161,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
       children: [
         Text(label,
             style: TextStyle(
-                color: Colors.white.withOpacity(0.7), fontSize: 13)),
+                color: Colors.white.withOpacity(0.7),
+                fontSize: 13)),
         Text(value,
             style: const TextStyle(
                 color: Colors.white,
@@ -1114,8 +1185,9 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                     ? Colors.indigo.shade800
                     : Colors.grey.shade600,
                 fontSize: isBold ? 15 : 13,
-                fontWeight:
-                    isBold ? FontWeight.bold : FontWeight.normal,
+                fontWeight: isBold
+                    ? FontWeight.bold
+                    : FontWeight.normal,
               )),
           Text(value,
               style: TextStyle(
@@ -1132,10 +1204,12 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
   }
 
   // =============================================
-  //        CONFIRMER VIDER TOUT
+  //     CONFIRMER VIDER TOUT (ADMIN SEULEMENT)
   // =============================================
 
   void _confirmClearAll() {
+    if (!_isAdmin) return;
+
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -1143,13 +1217,14 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
             borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            Icon(Icons.delete_sweep, color: Colors.red.shade400),
+            Icon(Icons.delete_sweep,
+                color: Colors.red.shade400),
             const SizedBox(width: 10),
             const Text('Vider l\'historique'),
           ],
         ),
         content: const Text(
-          'Voulez-vous supprimer TOUT l\'historique des ventes ?\n\n'
+          'Voulez-vous supprimer TOUT l\'historique ?\n\n'
           'Cette action est irréversible.',
         ),
         actions: [
@@ -1162,7 +1237,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
               _saleService.clearAllSales();
               Navigator.pop(ctx);
               setState(() {});
-              _showSnackBar('🗑️ Historique vidé', isError: true);
+              _showSnackBar('🗑️ Historique vidé',
+                  isError: true);
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -1211,7 +1287,8 @@ class _SalesHistoryScreenState extends State<SalesHistoryScreen> {
                 ? 'Les ventes apparaîtront ici\naprès la première transaction'
                 : 'Aucune vente pour cette période',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+            style: TextStyle(
+                color: Colors.grey.shade400, fontSize: 14),
           ),
         ],
       ),
