@@ -1,6 +1,3 @@
-# 📄 `lib/screens/users/users_list_screen.dart` — Complet
-
-```dart
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import '../../services/user_service.dart';
@@ -495,21 +492,3 @@ class _UsersListScreenState extends State<UsersListScreen> {
     );
   }
 }
-```
-
----
-
-## ✅ Récapitulatif des boutons dans l’AppBar
-
-| Bouton | Icône | Action |
-|---|---|---|
-| 🕒 Historique des ventes | `Icons.history_rounded` | Ouvre `SalesHistoryScreen` |
-| 📥 Importer des produits | `Icons.download_rounded` | Ouvre `ImportProductsScreen` |
-| 👤+ Ajouter un utilisateur | `Icons.person_add_rounded` | Ouvre `UserFormScreen` |
-
----
-
-**Prochaine étape ?** 🚀  
-1. **📊 Dashboard** — Graphiques et statistiques  
-2. **⚙️ Paramètres** — Configuration de la caisse  
-3. **👤 Profil caissier** — Modifier mot de passe
