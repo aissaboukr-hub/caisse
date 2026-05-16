@@ -193,7 +193,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // ---- CAMÉRA ----
+                    // ---- CAMÉRA ----
           MobileScanner(
             controller: _cameraController,
             onDetect: _handleDetection,
@@ -218,9 +218,7 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen>
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        error.errorCode == ErrorCode.permissionDenied
-                            ? 'Veuillez autoriser l\'accès à la caméra\ndans les paramètres du téléphone'
-                            : 'Erreur: ${error.toString()}',
+                        'Veuillez autoriser l\'accès à la caméra\ndans les paramètres du téléphone',
                         textAlign: TextAlign.center,
                         style: const TextStyle(
                             color: Colors.white60, fontSize: 13),
