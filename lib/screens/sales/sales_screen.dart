@@ -1952,7 +1952,7 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   // =============================================
-  //     CARTE ARTICLE PANIER
+  //     CARTE ARTICLE PANIER (NOM COMPLET)
   // =============================================
 
   Widget _buildCartItemCard(dynamic item, int index) {
@@ -1978,8 +1978,7 @@ class _SalesScreenState extends State<SalesScreen> {
       ),
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(
-            horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
@@ -1991,117 +1990,144 @@ class _SalesScreenState extends State<SalesScreen> {
             ),
           ],
         ),
-        child: Row(
+        child: Column(
           children: [
-            Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: Colors.indigo.shade50,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Center(
-                child: Text(
-                  '${index + 1}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.indigo.shade600,
+            // ═══════════════════════════════════
+            //     LIGNE 1 : NUMÉRO + NOM + PRIX
+            // ═══════════════════════════════════
+            Row(
+              children: [
+                // Numéro
+                Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: Colors.indigo.shade50,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '${index + 1}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.indigo.shade600,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            GestureDetector(
-              onTap: () =>
-                  _showEditQuantityDialog(item),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.indigo.shade600,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'x${item.quantity}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
-                children: [
-                  Text(
+                const SizedBox(width: 10),
+
+                // ✅ NOM DU PRODUIT (prend toute la place disponible)
+                Expanded(
+                  child: Text(
                     item.product.name,
                     style: const TextStyle(
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                       color: Color(0xFF2D3436),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${item.product.price.toStringAsFixed(0)} DZ',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _qtyButton(
-                  icon: Icons.remove,
-                  onTap: () {
-                    _cartService.decreaseQuantity(
-                        item.product.id);
-                    setState(() {});
-                  },
-                ),
-                Container(
-                  width: 36,
-                  alignment: Alignment.center,
-                  child: Text(
-                    '${item.quantity}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16),
+                    // ✅ PAS DE maxLines ni overflow → texte complet
+                    softWrap: true,
                   ),
                 ),
-                _qtyButton(
-                  icon: Icons.add,
-                  onTap: () {
-                    _cartService.increaseQuantity(
-                        item.product.id);
-                    setState(() {});
-                  },
+
+                const SizedBox(width: 8),
+
+                // Prix unitaire
+                Text(
+                  '${item.product.price.toStringAsFixed(0)} DZ',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade500,
+                  ),
                 ),
               ],
             ),
-            const SizedBox(width: 10),
-            SizedBox(
-              width: 80,
-              child: Text(
-                item.formattedTotal,
-                textAlign: TextAlign.right,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  color: Colors.indigo.shade700,
+
+            const SizedBox(height: 8),
+            Divider(height: 1, color: Colors.grey.shade100),
+            const SizedBox(height: 8),
+
+            // ═══════════════════════════════════
+            //     LIGNE 2 : CONTRÔLES + TOTAL
+            // ═══════════════════════════════════
+            Row(
+              children: [
+                // Bouton quantité (tap pour modifier)
+                GestureDetector(
+                  onTap: () => _showEditQuantityDialog(item),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.indigo.shade600,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'x${item.quantity}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
+
+                const Spacer(),
+
+                // Contrôles +/-
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _qtyButton(
+                        icon: Icons.remove,
+                        onTap: () {
+                          _cartService
+                              .decreaseQuantity(item.product.id);
+                          setState(() {});
+                        },
+                      ),
+                      Container(
+                        width: 40,
+                        alignment: Alignment.center,
+                        child: Text(
+                          '${item.quantity}',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16),
+                        ),
+                      ),
+                      _qtyButton(
+                        icon: Icons.add,
+                        onTap: () {
+                          _cartService
+                              .increaseQuantity(item.product.id);
+                          setState(() {});
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+
+                const Spacer(),
+
+                // Total
+                Text(
+                  item.formattedTotal,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Colors.indigo.shade700,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
