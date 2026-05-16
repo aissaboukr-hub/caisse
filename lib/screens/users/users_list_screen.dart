@@ -5,6 +5,7 @@ import '../../widgets/user_card.dart';
 import 'user_form_screen.dart';
 import '../products/import_products_screen.dart';
 import '../history/sales_history_screen.dart';
+import '../settings/printer_settings_screen.dart';
 
 class UsersListScreen extends StatefulWidget {
   const UsersListScreen({super.key});
@@ -86,6 +87,19 @@ class _UsersListScreenState extends State<UsersListScreen> {
         builder: (_) => const SalesHistoryScreen(
           userRole: 'admin',
         ),
+      ),
+    );
+  }
+
+  // =============================================
+  //       NAVIGUER VERS L'IMPRIMANTE
+  // =============================================
+
+  void _openPrinterSettings() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const PrinterSettingsScreen(),
       ),
     );
   }
@@ -174,7 +188,16 @@ class _UsersListScreenState extends State<UsersListScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          // ---- HISTORIQUE VENTES ----
+          // ---- BOUTON IMPRIMANTE ----
+          Tooltip(
+            message: 'Imprimante thermique',
+            child: IconButton(
+              icon: const Icon(Icons.print_rounded),
+              onPressed: _openPrinterSettings,
+            ),
+          ),
+
+          // ---- BOUTON HISTORIQUE VENTES ----
           Tooltip(
             message: 'Historique des ventes',
             child: IconButton(
@@ -183,7 +206,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
             ),
           ),
 
-          // ---- IMPORT PRODUITS ----
+          // ---- BOUTON IMPORT PRODUITS ----
           Tooltip(
             message: 'Importer des produits',
             child: IconButton(
@@ -192,7 +215,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
             ),
           ),
 
-          // ---- AJOUTER UTILISATEUR ----
+          // ---- BOUTON AJOUTER UTILISATEUR ----
           Tooltip(
             message: 'Ajouter un utilisateur',
             child: IconButton(

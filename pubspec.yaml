@@ -38,7 +38,13 @@ dependencies:
   # Animations
   flutter_animate: ^4.5.0
   shared_preferences: ^2.2.2
-  csv: ^5.1.1 
+  csv: ^5.1.1
+  blue_thermal_printer: ^1.2.2
+  # Bluetooth thermal printer
+  esc_pos_utils: ^1.1.0
+  # ESC/POS commands
+  permission_handler: ^11.3.0
+  # Gestion des permissions
   
 
 dev_dependencies:

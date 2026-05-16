@@ -4,6 +4,7 @@ import '../../models/product_model.dart';
 import '../../services/product_service.dart';
 import '../../services/cart_service.dart';
 import '../../services/sale_service.dart';
+import '../../services/printer_service.dart';
 import '../history/sales_history_screen.dart';
 import 'barcode_scanner_screen.dart';
 
@@ -20,6 +21,7 @@ class _SalesScreenState extends State<SalesScreen> {
   final ProductService _productService = ProductService();
   final CartService _cartService = CartService();
   final SaleService _saleService = SaleService();
+  final PrinterService _printerService = PrinterService();
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocus = FocusNode();
 
@@ -36,7 +38,7 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   // =============================================
-  //        RECHERCHE DE PRODUITS (WILDCARD %)
+  //        RECHERCHE (WILDCARD %)
   // =============================================
 
   void _onSearchChanged(String query) {
@@ -146,7 +148,8 @@ class _SalesScreenState extends State<SalesScreen> {
               ),
               child: Row(
                 children: [
-                  const Text('📦', style: TextStyle(fontSize: 24)),
+                  const Text('📦',
+                      style: TextStyle(fontSize: 24)),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -984,7 +987,7 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   // =============================================
-  //         TRAITEMENT DE LA VENTE
+  //     TRAITEMENT DE LA VENTE + IMPRESSION
   // =============================================
 
   Future<void> _processSale(double amountPaid) async {
@@ -1000,15 +1003,37 @@ class _SalesScreenState extends State<SalesScreen> {
           item.product.id, item.quantity);
     }
 
+    // ═══ IMPRESSION THERMIQUE ═══
+    final itemsForPrint = _cartService.items
+        .map((item) => {
+              'name': item.product.name,
+              'quantity': item.quantity,
+              'price': item.product.price,
+              'total': item.totalPrice,
+            })
+        .toList();
+
+    final printed = await _printerService.printTicket(
+      ticketId: sale.id.substring(sale.id.length - 6),
+      date: sale.formattedDateTime,
+      cashierName: widget.cashierName,
+      items: itemsForPrint,
+      totalAmount: sale.totalAmount,
+      amountPaid: sale.amountPaid,
+      change: sale.change,
+      shopName: 'Ma Caisse',
+    );
+
     _cartService.clearCart();
     setState(() {});
 
     HapticFeedback.heavyImpact();
 
-    _showSaleConfirmation(sale);
+    _showSaleConfirmation(sale, printed: printed);
   }
 
-  void _showSaleConfirmation(dynamic sale) {
+  void _showSaleConfirmation(dynamic sale,
+      {bool printed = false}) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -1044,7 +1069,51 @@ class _SalesScreenState extends State<SalesScreen> {
                 style: TextStyle(
                     color: Colors.grey.shade500, fontSize: 14),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 12),
+
+              // ═══ STATUT IMPRESSION ═══
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: printed
+                      ? Colors.green.shade50
+                      : Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: printed
+                        ? Colors.green.shade200
+                        : Colors.orange.shade200,
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      printed
+                          ? Icons.print
+                          : Icons.print_disabled,
+                      color: printed
+                          ? Colors.green.shade700
+                          : Colors.orange.shade700,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      printed
+                          ? 'Ticket imprimé ✅'
+                          : 'Impression non disponible',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: printed
+                            ? Colors.green.shade700
+                            : Colors.orange.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
