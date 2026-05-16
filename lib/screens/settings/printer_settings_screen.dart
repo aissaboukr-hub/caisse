@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:blue_thermal_printer/blue_thermal_printer.dart';
 import '../../services/printer_service.dart';
 
 class PrinterSettingsScreen extends StatefulWidget {
@@ -17,7 +16,6 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
   void initState() {
     super.initState();
     _printerService.addListener(_onPrinterChanged);
-    // Scanner au démarrage
     _printerService.scanDevices();
   }
 
@@ -61,19 +59,12 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ---- STATUT ----
             _buildStatusCard(),
             const SizedBox(height: 16),
-
-            // ---- TAILLE DU PAPIER ----
             _buildPaperSizeCard(),
             const SizedBox(height: 16),
-
-            // ---- APPAREILS ----
             _buildDevicesSection(),
             const SizedBox(height: 16),
-
-            // ---- ACTIONS ----
             if (_printerService.isConnected) ...[
               _buildActionsCard(),
               const SizedBox(height: 16),
@@ -85,7 +76,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
   }
 
   // =============================================
-  //           STATUT DE CONNEXION
+  //           STATUT
   // =============================================
 
   Widget _buildStatusCard() {
@@ -140,7 +131,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                 const SizedBox(height: 4),
                 Text(
                   isConnected
-                      ? '${_printerService.selectedDevice?.name ?? "Imprimante"}'
+                      ? '${_printerService.selectedDeviceName ?? "Imprimante"}'
                       : 'Sélectionnez une imprimante ci-dessous',
                   style: TextStyle(
                     color: Colors.white.withOpacity(0.8),
@@ -211,7 +202,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
     );
   }
 
-  Widget _paperSizeOption(int size, String label, String subtitle) {
+  Widget _paperSizeOption(
+      int size, String label, String subtitle) {
     final isSelected = _printerService.paperSize == size;
     return Expanded(
       child: GestureDetector(
@@ -272,7 +264,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
   }
 
   // =============================================
-  //           LISTE DES APPAREILS
+  //           APPAREILS
   // =============================================
 
   Widget _buildDevicesSection() {
@@ -318,7 +310,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                   )
                 else
                   TextButton.icon(
-                    onPressed: () => _printerService.scanDevices(),
+                    onPressed: () =>
+                        _printerService.scanDevices(),
                     icon: const Icon(Icons.refresh, size: 18),
                     label: const Text('Scanner'),
                     style: TextButton.styleFrom(
@@ -328,15 +321,16 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
               ],
             ),
           ),
-
-          if (_printerService.devices.isEmpty && !_printerService.isScanning)
+          if (_printerService.devices.isEmpty &&
+              !_printerService.isScanning)
             Padding(
               padding: const EdgeInsets.all(24),
               child: Center(
                 child: Column(
                   children: [
                     Icon(Icons.bluetooth_disabled,
-                        size: 48, color: Colors.grey.shade300),
+                        size: 48,
+                        color: Colors.grey.shade300),
                     const SizedBox(height: 12),
                     Text(
                       'Aucun appareil trouvé',
@@ -358,15 +352,15 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                 ),
               ),
             ),
-
-          // Liste des appareils
-          ...List.generate(_printerService.devices.length, (index) {
+          ...List.generate(
+              _printerService.devices.length, (index) {
             final device = _printerService.devices[index];
+            final address = device['address'] ?? '';
+            final name = device['name'] ?? '';
             final isSelected =
-                _printerService.selectedDevice?.address ==
-                    device.address;
-            final isCurrentlyConnected = isSelected &&
-                _printerService.isConnected;
+                _printerService.selectedDeviceAddress == address;
+            final isCurrentlyConnected =
+                isSelected && _printerService.isConnected;
 
             return Container(
               margin: const EdgeInsets.symmetric(
@@ -388,14 +382,15 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
               ),
               child: ListTile(
                 onTap: () async {
-                  final success =
-                      await _printerService.connect(device);
+                  final success = await _printerService
+                      .connect(address, name);
                   if (success && mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text(
-                            '✅ Connecté à ${device.name}'),
-                        backgroundColor: Colors.green.shade600,
+                        content:
+                            Text('✅ Connecté à $name'),
+                        backgroundColor:
+                            Colors.green.shade600,
                         behavior: SnackBarBehavior.floating,
                         shape: RoundedRectangleBorder(
                             borderRadius:
@@ -424,7 +419,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                   ),
                 ),
                 title: Text(
-                  device.name ?? 'Appareil inconnu',
+                  name,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
                     color: isCurrentlyConnected
@@ -433,7 +428,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
                   ),
                 ),
                 subtitle: Text(
-                  device.address ?? '',
+                  address,
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.grey.shade500,
@@ -463,7 +458,6 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
               ),
             );
           }),
-
           const SizedBox(height: 8),
         ],
       ),
@@ -471,7 +465,7 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
   }
 
   // =============================================
-  //           ACTIONS (TEST)
+  //           ACTIONS
   // =============================================
 
   Widget _buildActionsCard() {
@@ -512,7 +506,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
             height: 52,
             child: ElevatedButton.icon(
               onPressed: () async {
-                final success = await _printerService.printTest();
+                final success =
+                    await _printerService.printTest();
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -535,7 +530,8 @@ class _PrinterSettingsScreenState extends State<PrinterSettingsScreen> {
               label: const Text(
                 'IMPRIMER PAGE DE TEST',
                 style: TextStyle(
-                    fontSize: 15, fontWeight: FontWeight.bold),
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold),
               ),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.indigo.shade600,

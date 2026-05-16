@@ -1,7 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
-import 'package:blue_thermal_printer/blue_thermal_printer.dart';
+import 'package:print_bluetooth_thermal/print_bluetooth_thermal.dart';
 import 'package:esc_pos_utils/esc_pos_utils.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -12,23 +13,22 @@ class PrinterService extends ChangeNotifier {
     _init();
   }
 
-  final BlueThermalPrinter _bluetooth = BlueThermalPrinter.instance;
-
-  List<BluetoothDevice> _devices = [];
-  BluetoothDevice? _selectedDevice;
+  String? _selectedDeviceAddress;
+  String? _selectedDeviceName;
   bool _isConnected = false;
   bool _isScanning = false;
   String _statusMessage = 'Non connecté';
+  int _paperSize = 80;
 
-  // Taille du papier
-  int _paperSize = 80; // 58 ou 80 mm
+  List<Map<String, String>> _devices = [];
 
   // =============================================
   //               GETTERS
   // =============================================
 
-  List<BluetoothDevice> get devices => _devices;
-  BluetoothDevice? get selectedDevice => _selectedDevice;
+  List<Map<String, String>> get devices => _devices;
+  String? get selectedDeviceName => _selectedDeviceName;
+  String? get selectedDeviceAddress => _selectedDeviceAddress;
   bool get isConnected => _isConnected;
   bool get isScanning => _isScanning;
   String get statusMessage => _statusMessage;
@@ -40,29 +40,14 @@ class PrinterService extends ChangeNotifier {
 
   Future<void> _init() async {
     try {
-      _isConnected = (await _bluetooth.isConnected) ?? false;
+      _isConnected = await PrintBluetoothThermal.connectionStatus;
       _statusMessage = _isConnected ? 'Connecté' : 'Non connecté';
 
-      // Charger le device sauvegardé
       await _loadSavedDevice();
 
-      // Écouter les changements de connexion
-      _bluetooth.onStateChanged().listen((state) {
-        switch (state) {
-          case BlueThermalPrinter.CONNECTED:
-            _isConnected = true;
-            _statusMessage = 'Connecté';
-            break;
-          case BlueThermalPrinter.DISCONNECTED:
-            _isConnected = false;
-            _statusMessage = 'Déconnecté';
-            _selectedDevice = null;
-            break;
-          default:
-            break;
-        }
-        notifyListeners();
-      });
+      if (_isConnected && _selectedDeviceAddress != null) {
+        _statusMessage = 'Connecté à $_selectedDeviceName';
+      }
     } catch (e) {
       debugPrint('Erreur init printer: $e');
     }
@@ -70,17 +55,18 @@ class PrinterService extends ChangeNotifier {
   }
 
   // =============================================
-  //          SAUVEGARDE / CHARGEMENT DEVICE
+  //          SAUVEGARDE / CHARGEMENT
   // =============================================
 
-  static const String _deviceKey = 'printer_device_address';
+  static const String _addressKey = 'printer_device_address';
+  static const String _nameKey = 'printer_device_name';
   static const String _paperSizeKey = 'printer_paper_size';
 
-  Future<void> _saveDevice(BluetoothDevice device) async {
+  Future<void> _saveDevice(String address, String name) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_deviceKey, device.address ?? '');
-      await prefs.setString('${_deviceKey}_name', device.name ?? '');
+      await prefs.setString(_addressKey, address);
+      await prefs.setString(_nameKey, name);
     } catch (e) {
       debugPrint('Erreur sauvegarde device: $e');
     }
@@ -89,13 +75,9 @@ class PrinterService extends ChangeNotifier {
   Future<void> _loadSavedDevice() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final address = prefs.getString(_deviceKey);
-      final name = prefs.getString('${_deviceKey}_name');
+      _selectedDeviceAddress = prefs.getString(_addressKey);
+      _selectedDeviceName = prefs.getString(_nameKey);
       _paperSize = prefs.getInt(_paperSizeKey) ?? 80;
-
-      if (address != null && address.isNotEmpty) {
-        _selectedDevice = BluetoothDevice(name ?? 'Imprimante', address);
-      }
     } catch (e) {
       debugPrint('Erreur chargement device: $e');
     }
@@ -109,7 +91,7 @@ class PrinterService extends ChangeNotifier {
   }
 
   // =============================================
-  //          SCAN DES APPAREILS BLUETOOTH
+  //          SCAN DES APPAREILS
   // =============================================
 
   Future<void> scanDevices() async {
@@ -118,7 +100,16 @@ class PrinterService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      _devices = await _bluetooth.getBondedDevices();
+      final List<BluetoothInfo> bluetoothDevices =
+          await PrintBluetoothThermal.pairedBluetooths;
+
+      _devices = bluetoothDevices.map((device) {
+        return {
+          'name': device.name ?? 'Appareil inconnu',
+          'address': device.macAdress ?? '',
+        };
+      }).toList();
+
       _statusMessage = '${_devices.length} appareil(s) trouvé(s)';
     } catch (e) {
       _statusMessage = 'Erreur: $e';
@@ -133,18 +124,28 @@ class PrinterService extends ChangeNotifier {
   //          CONNEXION / DÉCONNEXION
   // =============================================
 
-  Future<bool> connect(BluetoothDevice device) async {
-    _statusMessage = 'Connexion à ${device.name}...';
+  Future<bool> connect(String address, String name) async {
+    _statusMessage = 'Connexion à $name...';
     notifyListeners();
 
     try {
-      await _bluetooth.connect(device);
-      _isConnected = true;
-      _selectedDevice = device;
-      _statusMessage = 'Connecté à ${device.name}';
-      await _saveDevice(device);
-      notifyListeners();
-      return true;
+      final bool result =
+          await PrintBluetoothThermal.connect(macPrinterAddress: address);
+
+      if (result) {
+        _isConnected = true;
+        _selectedDeviceAddress = address;
+        _selectedDeviceName = name;
+        _statusMessage = 'Connecté à $name';
+        await _saveDevice(address, name);
+        notifyListeners();
+        return true;
+      } else {
+        _isConnected = false;
+        _statusMessage = 'Échec de connexion';
+        notifyListeners();
+        return false;
+      }
     } catch (e) {
       _isConnected = false;
       _statusMessage = 'Erreur de connexion: $e';
@@ -156,9 +157,10 @@ class PrinterService extends ChangeNotifier {
 
   Future<void> disconnect() async {
     try {
-      await _bluetooth.disconnect();
+      final bool result = await PrintBluetoothThermal.disconnect;
       _isConnected = false;
-      _selectedDevice = null;
+      _selectedDeviceAddress = null;
+      _selectedDeviceName = null;
       _statusMessage = 'Déconnecté';
     } catch (e) {
       debugPrint('Erreur déconnexion: $e');
@@ -171,11 +173,10 @@ class PrinterService extends ChangeNotifier {
   // =============================================
 
   Future<bool> autoConnect() async {
-    if (_selectedDevice == null) return false;
-
+    if (_selectedDeviceAddress == null) return false;
     if (_isConnected) return true;
-
-    return await connect(_selectedDevice!);
+    return await connect(
+        _selectedDeviceAddress!, _selectedDeviceName ?? 'Imprimante');
   }
 
   // =============================================
@@ -196,7 +197,6 @@ class PrinterService extends ChangeNotifier {
   }) async {
     // Vérifier la connexion
     if (!_isConnected) {
-      // Essayer la reconnexion auto
       final connected = await autoConnect();
       if (!connected) {
         _statusMessage = 'Aucune imprimante connectée';
@@ -206,7 +206,6 @@ class PrinterService extends ChangeNotifier {
     }
 
     try {
-      // Générer le profil selon la taille du papier
       final profile = await CapabilityProfile.load();
       final generator = Generator(
         _paperSize == 58 ? PaperSize.mm58 : PaperSize.mm80,
@@ -215,11 +214,7 @@ class PrinterService extends ChangeNotifier {
 
       List<int> bytes = [];
 
-      // ═══════════════════════════════════
-      //          EN-TÊTE DU TICKET
-      // ═══════════════════════════════════
-
-      // Nom de la boutique
+      // ═══ EN-TÊTE ═══
       bytes += generator.text(
         shopName,
         styles: const PosStyles(
@@ -244,10 +239,8 @@ class PrinterService extends ChangeNotifier {
         );
       }
 
-      // Séparateur
       bytes += generator.hr();
 
-      // Date et infos
       bytes += generator.text(
         'Date: $date',
         styles: const PosStyles(align: PosAlign.left),
@@ -263,18 +256,14 @@ class PrinterService extends ChangeNotifier {
 
       bytes += generator.hr();
 
-      // ═══════════════════════════════════
-      //          ARTICLES
-      // ═══════════════════════════════════
-
-      // En-tête tableau
+      // ═══ ARTICLES ═══
       if (_paperSize == 80) {
-        // Format 80mm : plus de place
         bytes += generator.row([
           PosColumn(
             text: 'QTÉ',
             width: 2,
-            styles: const PosStyles(bold: true, align: PosAlign.center),
+            styles:
+                const PosStyles(bold: true, align: PosAlign.center),
           ),
           PosColumn(
             text: 'DÉSIGNATION',
@@ -284,21 +273,23 @@ class PrinterService extends ChangeNotifier {
           PosColumn(
             text: 'P.U.',
             width: 2,
-            styles: const PosStyles(bold: true, align: PosAlign.right),
+            styles:
+                const PosStyles(bold: true, align: PosAlign.right),
           ),
           PosColumn(
             text: 'TOTAL',
             width: 3,
-            styles: const PosStyles(bold: true, align: PosAlign.right),
+            styles:
+                const PosStyles(bold: true, align: PosAlign.right),
           ),
         ]);
       } else {
-        // Format 58mm : compact
         bytes += generator.row([
           PosColumn(
             text: 'QTE',
             width: 2,
-            styles: const PosStyles(bold: true, align: PosAlign.center),
+            styles:
+                const PosStyles(bold: true, align: PosAlign.center),
           ),
           PosColumn(
             text: 'ARTICLE',
@@ -308,14 +299,14 @@ class PrinterService extends ChangeNotifier {
           PosColumn(
             text: 'TOTAL',
             width: 4,
-            styles: const PosStyles(bold: true, align: PosAlign.right),
+            styles:
+                const PosStyles(bold: true, align: PosAlign.right),
           ),
         ]);
       }
 
       bytes += generator.hr(ch: '-');
 
-      // Chaque article
       for (final item in items) {
         final name = item['name'] as String;
         final qty = item['quantity'] as int;
@@ -342,12 +333,11 @@ class PrinterService extends ChangeNotifier {
             PosColumn(
               text: total.toStringAsFixed(0),
               width: 3,
-              styles: const PosStyles(
-                  align: PosAlign.right, bold: true),
+              styles:
+                  const PosStyles(align: PosAlign.right, bold: true),
             ),
           ]);
         } else {
-          // 58mm : 2 lignes par article
           bytes += generator.text(
             'x$qty $name',
             styles: const PosStyles(),
@@ -361,10 +351,7 @@ class PrinterService extends ChangeNotifier {
 
       bytes += generator.hr();
 
-      // ═══════════════════════════════════
-      //          TOTAL
-      // ═══════════════════════════════════
-
+      // ═══ TOTAL ═══
       bytes += generator.text(
         'TOTAL: ${totalAmount.toStringAsFixed(0)} DZ',
         styles: const PosStyles(
@@ -387,10 +374,7 @@ class PrinterService extends ChangeNotifier {
 
       bytes += generator.hr();
 
-      // ═══════════════════════════════════
-          //          PIED DE PAGE
-      // ═══════════════════════════════════
-
+      // ═══ PIED DE PAGE ═══
       bytes += generator.text(
         'Merci pour votre achat !',
         styles: const PosStyles(
@@ -404,29 +388,22 @@ class PrinterService extends ChangeNotifier {
         styles: const PosStyles(align: PosAlign.center),
       );
 
-      // Espace final et coupe du papier
       bytes += generator.feed(3);
       bytes += generator.cut();
 
-      // ═══════════════════════════════════
-      //          ENVOYER À L'IMPRIMANTE
-      // ═══════════════════════════════════
+      // ═══ ENVOYER À L'IMPRIMANTE ═══
+      final bool result =
+          await PrintBluetoothThermal.writeBytes(bytes);
 
-      // Envoyer par paquets (certaines imprimantes ont des limites)
-      const int chunkSize = 200;
-      for (int i = 0; i < bytes.length; i += chunkSize) {
-        final end = (i + chunkSize < bytes.length)
-            ? i + chunkSize
-            : bytes.length;
-        final chunk = bytes.sublist(i, end);
-        await _bluetooth.writeBytes(Uint8List.fromList(chunk));
-        // Petit délai entre les paquets
-        await Future.delayed(const Duration(milliseconds: 50));
+      if (result) {
+        _statusMessage = 'Ticket imprimé ✅';
+        notifyListeners();
+        return true;
+      } else {
+        _statusMessage = 'Erreur d\'envoi';
+        notifyListeners();
+        return false;
       }
-
-      _statusMessage = 'Ticket imprimé ✅';
-      notifyListeners();
-      return true;
     } catch (e) {
       _statusMessage = 'Erreur d\'impression: $e';
       debugPrint('Erreur impression: $e');
@@ -467,7 +444,7 @@ class PrinterService extends ChangeNotifier {
       bytes += generator.hr();
 
       bytes += generator.text(
-        'Imprimante: ${_selectedDevice?.name ?? "Inconnue"}',
+        'Imprimante: ${_selectedDeviceName ?? "Inconnue"}',
         styles: const PosStyles(align: PosAlign.center),
       );
 
@@ -495,11 +472,18 @@ class PrinterService extends ChangeNotifier {
       bytes += generator.feed(3);
       bytes += generator.cut();
 
-      await _bluetooth.writeBytes(Uint8List.fromList(bytes));
+      final bool result =
+          await PrintBluetoothThermal.writeBytes(bytes);
 
-      _statusMessage = 'Test imprimé ✅';
-      notifyListeners();
-      return true;
+      if (result) {
+        _statusMessage = 'Test imprimé ✅';
+        notifyListeners();
+        return true;
+      } else {
+        _statusMessage = 'Erreur test';
+        notifyListeners();
+        return false;
+      }
     } catch (e) {
       _statusMessage = 'Erreur test: $e';
       notifyListeners();
