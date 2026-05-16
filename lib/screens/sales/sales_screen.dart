@@ -35,7 +35,7 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   // =============================================
-  //        RECHERCHE DE PRODUITS
+  //        RECHERCHE DE PRODUITS (WILDCARD %)
   // =============================================
 
   void _onSearchChanged(String query) {
@@ -43,13 +43,18 @@ class _SalesScreenState extends State<SalesScreen> {
       _searchQuery = query;
       if (query.isNotEmpty) {
         _searchResults =
-            _productService.getProducts(search: query).take(8).toList();
+            _productService.getProducts(search: query).take(15).toList();
         _showSearchResults = true;
       } else {
         _searchResults = [];
         _showSearchResults = false;
       }
     });
+  }
+
+  void _setSearchWithWildcard(String pattern) {
+    _searchController.text = pattern;
+    _onSearchChanged(pattern);
   }
 
   void _selectProduct(ProductModel product) {
@@ -131,7 +136,7 @@ class _SalesScreenState extends State<SalesScreen> {
                             style: const TextStyle(
                                 fontWeight: FontWeight.bold, fontSize: 15)),
                         Text(
-                            '${product.price.toStringAsFixed(0)} FC ${product.unitLabel}',
+                            '${product.price.toStringAsFixed(0)} DZ',
                             style: TextStyle(
                                 color: Colors.grey.shade600, fontSize: 13)),
                       ],
@@ -152,11 +157,6 @@ class _SalesScreenState extends State<SalesScreen> {
               decoration: InputDecoration(
                 labelText: 'Quantité',
                 labelStyle: TextStyle(color: Colors.grey.shade500),
-                suffixText: product.unit == 'kg' ? 'Kg' : 'Pce',
-                suffixStyle: TextStyle(
-                    color: Colors.indigo.shade600,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
                   borderSide: BorderSide(color: Colors.grey.shade300),
@@ -215,11 +215,9 @@ class _SalesScreenState extends State<SalesScreen> {
   // =============================================
 
   Future<void> _openScanner() async {
-    // 🛡️ Bloquer les ouvertures multiples
     if (_isOpeningScanner) return;
     _isOpeningScanner = true;
 
-    // Fermer clavier et résultats
     _searchFocus.unfocus();
     setState(() => _showSearchResults = false);
 
@@ -237,22 +235,18 @@ class _SalesScreenState extends State<SalesScreen> {
     } catch (e) {
       debugPrint('Erreur scanner: $e');
     } finally {
-      // Délai avant de permettre une nouvelle ouverture
       await Future.delayed(const Duration(milliseconds: 1000));
       _isOpeningScanner = false;
     }
   }
 
   void _processScannedCode(String code) {
-    // 1. Rechercher par code-barres exact
     ProductModel? product = _productService.findByBarcode(code);
 
-    // 2. Si pas trouvé par barcode, chercher par ID
     product ??= _productService.products
         .where((p) => p.id == code)
         .firstOrNull;
 
-    // 3. Si toujours pas trouvé, chercher par nom
     product ??= _productService.getProducts(search: code).firstOrNull;
 
     if (product != null) {
@@ -425,7 +419,6 @@ class _SalesScreenState extends State<SalesScreen> {
                         ),
                         child: Column(
                           children: [
-                            // En-tête tableau
                             Row(
                               children: [
                                 Expanded(
@@ -456,8 +449,6 @@ class _SalesScreenState extends State<SalesScreen> {
                               ],
                             ),
                             Divider(color: Colors.grey.shade300),
-
-                            // Articles
                             ...(_cartService.items.map((item) {
                               return Padding(
                                 padding:
@@ -487,16 +478,12 @@ class _SalesScreenState extends State<SalesScreen> {
                                 ),
                               );
                             })),
-
-                            Divider(color: Colors.grey.shade300, thickness: 2),
-
-                            // Total
+                            Divider(
+                                color: Colors.grey.shade300, thickness: 2),
                             Row(
                               children: [
                                 const Expanded(
-                                  flex: 1,
-                                  child: Text(''),
-                                ),
+                                    flex: 1, child: Text('')),
                                 const Expanded(
                                   flex: 3,
                                   child: Text('TOTAL À PAYER',
@@ -535,7 +522,7 @@ class _SalesScreenState extends State<SalesScreen> {
                         ],
                         onChanged: (_) => setDialogState(() {}),
                         decoration: InputDecoration(
-                          labelText: 'Montant reçu (FC)',
+                          labelText: 'Montant reçu (DZ)',
                           labelStyle: TextStyle(color: Colors.grey.shade600),
                           prefixIcon: Icon(Icons.payments_outlined,
                               color: Colors.indigo.shade400),
@@ -583,8 +570,8 @@ class _SalesScreenState extends State<SalesScreen> {
                               const SizedBox(width: 10),
                               Text(
                                 change >= 0
-                                    ? 'Monnaie: ${change.toStringAsFixed(0)} FC'
-                                    : 'Manque: ${(total - entered).toStringAsFixed(0)} FC',
+                                    ? 'Monnaie: ${change.toStringAsFixed(0)} DZ'
+                                    : 'Manque: ${(total - entered).toStringAsFixed(0)} DZ',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
@@ -699,7 +686,7 @@ class _SalesScreenState extends State<SalesScreen> {
             border: Border.all(color: Colors.indigo.shade200),
           ),
           child: Text(
-            '$amount FC',
+            '$amount DZ',
             style: TextStyle(
               color: Colors.indigo.shade700,
               fontWeight: FontWeight.w600,
@@ -716,7 +703,6 @@ class _SalesScreenState extends State<SalesScreen> {
   // =============================================
 
   Future<void> _processSale(double amountPaid) async {
-    // 1. Enregistrer la vente
     final sale = await _saleService.recordSale(
       cashierName: widget.cashierName,
       items: _cartService.items.toList(),
@@ -724,19 +710,15 @@ class _SalesScreenState extends State<SalesScreen> {
       paymentMethod: 'cash',
     );
 
-    // 2. Diminuer les stocks
     for (final item in _cartService.items) {
       _productService.decreaseStock(item.product.id, item.quantity);
     }
 
-    // 3. Vider le panier
     _cartService.clearCart();
     setState(() {});
 
-    // 4. Vibration de confirmation
     HapticFeedback.heavyImpact();
 
-    // 5. Afficher confirmation
     _showSaleConfirmation(sale);
   }
 
@@ -760,8 +742,8 @@ class _SalesScreenState extends State<SalesScreen> {
                   color: Colors.green.shade100,
                   shape: BoxShape.circle,
                 ),
-                child:
-                    Icon(Icons.check, size: 45, color: Colors.green.shade700),
+                child: Icon(Icons.check,
+                    size: 45, color: Colors.green.shade700),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -783,11 +765,11 @@ class _SalesScreenState extends State<SalesScreen> {
                 child: Column(
                   children: [
                     _summaryRow(
-                        'Total', '${sale.totalAmount.toStringAsFixed(0)} FC'),
+                        'Total', '${sale.totalAmount.toStringAsFixed(0)} DZ'),
                     _summaryRow(
-                        'Payé', '${sale.amountPaid.toStringAsFixed(0)} FC'),
+                        'Payé', '${sale.amountPaid.toStringAsFixed(0)} DZ'),
                     _summaryRow(
-                        'Monnaie', '${sale.change.toStringAsFixed(0)} FC'),
+                        'Monnaie', '${sale.change.toStringAsFixed(0)} DZ'),
                   ],
                 ),
               ),
@@ -864,21 +846,6 @@ class _SalesScreenState extends State<SalesScreen> {
     );
   }
 
-  String _categoryEmoji(String category) {
-    switch (category) {
-      case 'Boissons':
-        return '🥤';
-      case 'Alimentation':
-        return '🍞';
-      case 'Hygiène':
-        return '🧴';
-      case 'Confiserie':
-        return '🍬';
-      default:
-        return '📦';
-    }
-  }
-
   // =============================================
   //               BUILD
   // =============================================
@@ -894,15 +861,10 @@ class _SalesScreenState extends State<SalesScreen> {
         },
         child: Column(
           children: [
-            // ---- HEADER ----
             _buildHeader(),
-
-            // ---- LISTE DES ARTICLES DANS LE PANIER ----
             Expanded(
               child: _buildCartList(),
             ),
-
-            // ---- BARRE INFÉRIEURE ----
             _buildBottomBar(),
           ],
         ),
@@ -1008,9 +970,9 @@ class _SalesScreenState extends State<SalesScreen> {
                     onChanged: _onSearchChanged,
                     style: const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
-                      hintText: 'Rechercher un produit...',
-                      hintStyle:
-                          TextStyle(color: Colors.white.withOpacity(0.5)),
+                      hintText: 'Rechercher (utilisez % comme *)',
+                      hintStyle: TextStyle(
+                          color: Colors.white.withOpacity(0.5), fontSize: 13),
                       prefixIcon: Icon(Icons.search,
                           color: Colors.white.withOpacity(0.7)),
                       suffixIcon: _searchQuery.isNotEmpty
@@ -1062,97 +1024,298 @@ class _SalesScreenState extends State<SalesScreen> {
   }
 
   // =============================================
+  //     BOUTONS RACCOURCI WILDCARD
+  // =============================================
+
+  Widget _wildcardChip(String pattern, String label, IconData icon) {
+    return GestureDetector(
+      onTap: () => _setSearchWithWildcard(pattern),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.indigo.shade50,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.indigo.shade200),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: Colors.indigo.shade600),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.indigo.shade700,
+                  fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // =============================================
+  //     SURLIGNER LE TEXTE CORRESPONDANT
+  // =============================================
+
+  Widget _highlightMatch(String text, String query) {
+    if (query.isEmpty || !query.contains('%')) {
+      return Text(
+        text,
+        style: const TextStyle(
+            fontWeight: FontWeight.w600, fontSize: 14),
+      );
+    }
+
+    final pattern = query
+        .replaceAll('%', '.*')
+        .replaceAll('_', '.');
+    final regex = RegExp('($pattern)', caseSensitive: false);
+    final matches = regex.allMatches(text);
+
+    if (matches.isEmpty) {
+      return Text(
+        text,
+        style: const TextStyle(
+            fontWeight: FontWeight.w600, fontSize: 14),
+      );
+    }
+
+    final List<TextSpan> spans = [];
+    int lastEnd = 0;
+
+    for (final match in matches) {
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(
+          text: text.substring(lastEnd, match.start),
+          style: const TextStyle(
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+              color: Colors.black87),
+        ));
+      }
+
+      spans.add(TextSpan(
+        text: text.substring(match.start, match.end),
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 14,
+          color: Colors.indigo.shade700,
+          backgroundColor: Colors.indigo.shade50,
+        ),
+      ));
+
+      lastEnd = match.end;
+    }
+
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(
+        text: text.substring(lastEnd),
+        style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            color: Colors.black87),
+      ));
+    }
+
+    return RichText(
+      text: TextSpan(children: spans),
+      overflow: TextOverflow.ellipsis,
+      maxLines: 1,
+    );
+  }
+
+  // =============================================
   //        LISTE DES RÉSULTATS DE RECHERCHE
   // =============================================
 
   Widget _buildSearchResults() {
-    if (_searchResults.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search_off, size: 60, color: Colors.grey.shade300),
-            const SizedBox(height: 12),
-            Text('Aucun produit trouvé pour "$_searchQuery"',
-                style: TextStyle(color: Colors.grey.shade500, fontSize: 15)),
-          ],
-        ),
-      );
-    }
-
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+    return Column(
+      children: [
+        // ---- BOUTONS RACCOURCI WILDCARD ----
+        Container(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _wildcardChip('%', 'Tout', Icons.select_all),
+                const SizedBox(width: 6),
+                _wildcardChip('%a', 'Finit par "a"',
+                    Icons.text_rotate_vertical),
+                const SizedBox(width: 6),
+                _wildcardChip('a%', 'Commence par "a"',
+                    Icons.text_rotation_none),
+                const SizedBox(width: 6),
+                _wildcardChip('%%', 'Recherche avancée',
+                    Icons.manage_search),
+              ],
+            ),
           ),
-        ],
-      ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: _searchResults.length,
-        separatorBuilder: (_, __) =>
-            Divider(height: 1, color: Colors.grey.shade100),
-        itemBuilder: (context, index) {
-          final product = _searchResults[index];
-          final inCart = _cartService.isInCart(product.id);
-          final lowStock = product.stock <= 5;
+        ),
 
-          return ListTile(
-            onTap: () => _selectProduct(product),
-            leading: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.indigo.shade50,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(_categoryEmoji(product.category),
-                    style: const TextStyle(fontSize: 22)),
-              ),
-            ),
-            title: Text(
-              product.name,
-              style:
-                  const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-            ),
-            subtitle: Text(
-              '${product.price.toStringAsFixed(0)} FC  •  '
-              '${lowStock ? "⚠️" : ""} Stock: ${product.stock}',
-              style: TextStyle(
-                fontSize: 12,
-                color:
-                    lowStock ? Colors.orange.shade700 : Colors.grey.shade500,
-              ),
-            ),
-            trailing: inCart
-                ? Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.indigo.shade50,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      '${_cartService.getQuantity(product.id)} dans panier',
-                      style: TextStyle(
-                          fontSize: 11,
-                          color: Colors.indigo.shade700,
-                          fontWeight: FontWeight.w600),
-                    ),
-                  )
-                : Icon(Icons.add_circle_outline,
-                    color: Colors.indigo.shade400),
-          );
-        },
-      ),
+        const SizedBox(height: 8),
+
+        // ---- RÉSULTATS ----
+        Expanded(
+          child: _searchResults.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.search_off,
+                          size: 60, color: Colors.grey.shade300),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Aucun produit trouvé',
+                        style: TextStyle(
+                            color: Colors.grey.shade500, fontSize: 16),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.symmetric(horizontal: 40),
+                        decoration: BoxDecoration(
+                          color: Colors.indigo.shade50,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              '💡 Astuce : utilisez % comme caractère générique',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  color: Colors.indigo.shade700,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '%cola → Coca-Cola\n'
+                              'coca% → Coca-Cola 1L\n'
+                              '%col% → contient "col"',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                  color: Colors.indigo.shade500,
+                                  fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.08),
+                        blurRadius: 15,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      // Compteur de résultats
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(16),
+                            topRight: Radius.circular(16),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.filter_list,
+                                size: 16, color: Colors.grey.shade500),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${_searchResults.length} résultat(s) pour "$_searchQuery"',
+                              style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Liste des résultats
+                      Expanded(
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          itemCount: _searchResults.length,
+                          separatorBuilder: (_, __) => Divider(
+                              height: 1, color: Colors.grey.shade100),
+                          itemBuilder: (context, index) {
+                            final product = _searchResults[index];
+                            final inCart =
+                                _cartService.isInCart(product.id);
+                            final lowStock = product.stock <= 5;
+
+                            return ListTile(
+                              onTap: () => _selectProduct(product),
+                              leading: Container(
+                                width: 44,
+                                height: 44,
+                                decoration: BoxDecoration(
+                                  color: Colors.indigo.shade50,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Center(
+                                  child: Text('📦',
+                                      style: TextStyle(fontSize: 22)),
+                                ),
+                              ),
+                              title: _highlightMatch(
+                                  product.name, _searchQuery),
+                              subtitle: Text(
+                                '${product.price.toStringAsFixed(0)} DZ  •  '
+                                '${lowStock ? "⚠️" : ""} Stock: ${product.stock}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: lowStock
+                                      ? Colors.orange.shade700
+                                      : Colors.grey.shade500,
+                                ),
+                              ),
+                              trailing: inCart
+                                  ? Container(
+                                      padding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: Colors.indigo.shade50,
+                                        borderRadius:
+                                            BorderRadius.circular(20),
+                                      ),
+                                      child: Text(
+                                        '${_cartService.getQuantity(product.id)}x',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.indigo.shade700,
+                                            fontWeight: FontWeight.w600),
+                                      ),
+                                    )
+                                  : Icon(Icons.add_circle_outline,
+                                      color: Colors.indigo.shade400),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+        ),
+      ],
     );
   }
 
@@ -1161,12 +1324,10 @@ class _SalesScreenState extends State<SalesScreen> {
   // =============================================
 
   Widget _buildCartList() {
-    // Afficher les résultats de recherche si actif
     if (_showSearchResults) {
       return _buildSearchResults();
     }
 
-    // Panier vide
     if (_cartService.itemCount == 0) {
       return Center(
         child: Column(
@@ -1223,7 +1384,6 @@ class _SalesScreenState extends State<SalesScreen> {
       );
     }
 
-    // ---- LISTE DES ARTICLES DANS LE PANIER ----
     return Column(
       children: [
         // En-tête
@@ -1409,7 +1569,7 @@ class _SalesScreenState extends State<SalesScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${item.product.price.toStringAsFixed(0)} FC ${item.product.unitLabel}',
+                    '${item.product.price.toStringAsFixed(0)} DZ',
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.grey.shade500,

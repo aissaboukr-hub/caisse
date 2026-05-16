@@ -67,28 +67,77 @@ class ProductService extends ChangeNotifier {
     return ['Tous', ...cats];
   }
 
-  // =============================================
-  //            RECHERCHE / FILTRE
+    // =============================================
+  //     RECHERCHE / FILTRE AVEC WILDCARD (%)
   // =============================================
 
   List<ProductModel> getProducts({String? category, String? search}) {
     var result = _products.where((p) => p.isAvailable).toList();
 
+    // Filtrer par catégorie
     if (category != null && category != 'Tous') {
       result = result.where((p) => p.category == category).toList();
     }
 
-    if (search != null && search.isNotEmpty) {
-      final q = search.toLowerCase();
-      result = result.where((p) {
-        return p.name.toLowerCase().contains(q) ||
-            p.category.toLowerCase().contains(q) ||
-            (p.barcode != null && p.barcode!.contains(q)) ||
-            p.id.contains(q);
-      }).toList();
+    // Filtrer par recherche (avec support wildcard %)
+    if (search != null && search.trim().isNotEmpty) {
+      final query = search.trim();
+      final hasWildcard = query.contains('%');
+
+      if (hasWildcard) {
+        // ═══════════════════════════════════════
+        //   RECHERCHE AVEC WILDCARD %
+        //   % = n'importe quels caractères
+        // ═══════════════════════════════════════
+        final pattern = _wildcardToRegex(query);
+        final regex = RegExp(pattern, caseSensitive: false);
+
+        result = result.where((p) {
+          return regex.hasMatch(p.name) ||
+              regex.hasMatch(p.category) ||
+              (p.barcode != null && regex.hasMatch(p.barcode!)) ||
+              regex.hasMatch(p.id);
+        }).toList();
+      } else {
+        // ═══════════════════════════════════════
+        //   RECHERCHE CLASSIQUE (contient)
+        // ═══════════════════════════════════════
+        final q = query.toLowerCase();
+        result = result.where((p) {
+          return p.name.toLowerCase().contains(q) ||
+              p.category.toLowerCase().contains(q) ||
+              (p.barcode != null &&
+                  p.barcode!.toLowerCase().contains(q)) ||
+              p.id.contains(q);
+        }).toList();
+      }
     }
 
     return result;
+  }
+
+  // =============================================
+  //   CONVERTIR WILDCARD % EN EXPRESSION RÉGULIÈRE
+  // =============================================
+
+  String _wildcardToRegex(String wildcard) {
+    // Échapper les caractères spéciaux regex sauf %
+    // puis remplacer % par .*
+    var pattern = '';
+
+    for (int i = 0; i < wildcard.length; i++) {
+      final char = wildcard[i];
+      if (char == '%') {
+        pattern += '.*';  // % = n'importe quels caractères
+      } else if (char == '_') {
+        pattern += '.';   // _ = un seul caractère (comme SQL)
+      } else {
+        // Échapper les caractères spéciaux regex
+        pattern += RegExp.escape(char);
+      }
+    }
+
+    return pattern;
   }
 
   // =============================================
