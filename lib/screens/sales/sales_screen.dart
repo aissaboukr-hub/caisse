@@ -146,8 +146,7 @@ class _SalesScreenState extends State<SalesScreen> {
               ),
               child: Row(
                 children: [
-                  const Text('📦',
-                      style: TextStyle(fontSize: 24)),
+                  const Text('📦', style: TextStyle(fontSize: 24)),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -378,6 +377,7 @@ class _SalesScreenState extends State<SalesScreen> {
 
   // =============================================
   //       IMPRIMER / FINALISER LA VENTE
+  //  ⚠️ NOM COMPLET SUR 2 LIGNES
   // =============================================
 
   void _showPrintDialog() {
@@ -449,26 +449,24 @@ class _SalesScreenState extends State<SalesScreen> {
                           Text(
                             'Date: ${_formatDate(DateTime.now())}',
                             style: TextStyle(
-                                color: Colors.white
-                                    .withOpacity(0.8),
+                                color:
+                                    Colors.white.withOpacity(0.8),
                                 fontSize: 12),
                           ),
                           Text(
                             'Caissier: ${widget.cashierName}',
                             style: TextStyle(
-                                color: Colors.white
-                                    .withOpacity(0.7),
+                                color:
+                                    Colors.white.withOpacity(0.7),
                                 fontSize: 12),
                           ),
                           const SizedBox(height: 8),
                           Container(
-                            padding:
-                                const EdgeInsets.symmetric(
-                                    horizontal: 14,
-                                    vertical: 5),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 5),
                             decoration: BoxDecoration(
-                              color: Colors.white
-                                  .withOpacity(0.2),
+                              color:
+                                  Colors.white.withOpacity(0.2),
                               borderRadius:
                                   BorderRadius.circular(20),
                             ),
@@ -487,18 +485,16 @@ class _SalesScreenState extends State<SalesScreen> {
                     // ═══ ARTICLES SCROLLABLES ═══
                     Flexible(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(
-                            16, 0, 16, 0),
+                        padding:
+                            const EdgeInsets.fromLTRB(16, 0, 16, 0),
                         child: Column(
                           children: [
                             const SizedBox(height: 16),
 
-                            // En-tête tableau
+                            // Titre compteur
                             Container(
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 10),
                               decoration: BoxDecoration(
                                 color: Colors.indigo.shade50,
                                 borderRadius:
@@ -506,69 +502,25 @@ class _SalesScreenState extends State<SalesScreen> {
                               ),
                               child: Row(
                                 children: [
-                                  SizedBox(
-                                    width: 30,
-                                    child: Text('#',
-                                        style: TextStyle(
-                                            fontWeight:
-                                                FontWeight.bold,
-                                            fontSize: 11,
-                                            color: Colors
-                                                .indigo
-                                                .shade700)),
-                                  ),
-                                  SizedBox(
-                                    width: 35,
-                                    child: Text('QTÉ',
-                                        style: TextStyle(
-                                            fontWeight:
-                                                FontWeight.bold,
-                                            fontSize: 11,
-                                            color: Colors
-                                                .indigo
-                                                .shade700)),
-                                  ),
-                                  Expanded(
-                                    child: Text('DÉSIGNATION',
-                                        style: TextStyle(
-                                            fontWeight:
-                                                FontWeight.bold,
-                                            fontSize: 11,
-                                            color: Colors
-                                                .indigo
-                                                .shade700)),
-                                  ),
-                                  SizedBox(
-                                    width: 70,
-                                    child: Text('P.U.',
-                                        textAlign:
-                                            TextAlign.right,
-                                        style: TextStyle(
-                                            fontWeight:
-                                                FontWeight.bold,
-                                            fontSize: 11,
-                                            color: Colors
-                                                .indigo
-                                                .shade700)),
-                                  ),
-                                  SizedBox(
-                                    width: 80,
-                                    child: Text('MONTANT',
-                                        textAlign:
-                                            TextAlign.right,
-                                        style: TextStyle(
-                                            fontWeight:
-                                                FontWeight.bold,
-                                            fontSize: 11,
-                                            color: Colors
-                                                .indigo
-                                                .shade700)),
+                                  Icon(Icons.list_alt,
+                                      size: 18,
+                                      color:
+                                          Colors.indigo.shade700),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${_cartService.itemCount} article(s) • ${_cartService.totalQuantity} pièce(s)',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                      color:
+                                          Colors.indigo.shade700,
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
 
-                            // TOUS LES ARTICLES
+                            // ✅ TOUS LES ARTICLES (2 LIGNES)
                             ...List.generate(
                                 _cartService.items.length,
                                 (index) {
@@ -579,7 +531,7 @@ class _SalesScreenState extends State<SalesScreen> {
                               return Container(
                                 padding:
                                     const EdgeInsets.symmetric(
-                                        horizontal: 8,
+                                        horizontal: 10,
                                         vertical: 10),
                                 decoration: BoxDecoration(
                                   color: isEven
@@ -593,95 +545,97 @@ class _SalesScreenState extends State<SalesScreen> {
                                     ),
                                   ),
                                 ),
-                                child: Row(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
                                   children: [
-                                    SizedBox(
-                                      width: 30,
-                                      child: Text(
-                                        '${index + 1}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors
-                                              .grey.shade500,
-                                          fontWeight:
-                                              FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: 35,
-                                      child: Container(
-                                        padding:
-                                            const EdgeInsets
-                                                .symmetric(
-                                                horizontal: 6,
-                                                vertical: 2),
-                                        decoration:
-                                            BoxDecoration(
-                                          color: Colors
-                                              .indigo.shade600,
-                                          borderRadius:
-                                              BorderRadius
-                                                  .circular(4),
-                                        ),
-                                        child: Text(
-                                          '${item.quantity}',
-                                          textAlign:
-                                              TextAlign.center,
-                                          style:
-                                              const TextStyle(
-                                            color: Colors.white,
+                                    // LIGNE 1 : NUMÉRO + QUANTITÉ + NOM
+                                    Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '${index + 1}.',
+                                          style: TextStyle(
+                                            fontSize: 12,
                                             fontWeight:
                                                 FontWeight.bold,
-                                            fontSize: 12,
+                                            color: Colors
+                                                .grey.shade500,
                                           ),
                                         ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        item.product.name,
-                                        style:
-                                            const TextStyle(
-                                          fontWeight:
-                                              FontWeight.w600,
-                                          fontSize: 13,
-                                          color: Color(
-                                              0xFF2D3436),
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding:
+                                              const EdgeInsets
+                                                  .symmetric(
+                                                  horizontal: 8,
+                                                  vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: Colors
+                                                .indigo.shade600,
+                                            borderRadius:
+                                                BorderRadius
+                                                    .circular(6),
+                                          ),
+                                          child: Text(
+                                            'x${item.quantity}',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight:
+                                                  FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          ),
                                         ),
-                                        maxLines: 2,
-                                        overflow:
-                                            TextOverflow
-                                                .ellipsis,
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      width: 70,
-                                      child: Text(
-                                        '${item.product.price.toStringAsFixed(0)}',
-                                        textAlign:
-                                            TextAlign.right,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color: Colors
-                                              .grey.shade600,
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            item.product.name,
+                                            style: const TextStyle(
+                                              fontWeight:
+                                                  FontWeight.w600,
+                                              fontSize: 14,
+                                              color:
+                                                  Color(0xFF2D3436),
+                                            ),
+                                            softWrap: true,
+                                          ),
                                         ),
-                                      ),
+                                      ],
                                     ),
-                                    SizedBox(
-                                      width: 80,
-                                      child: Text(
-                                        '${item.totalPrice.toStringAsFixed(0)} DZ',
-                                        textAlign:
-                                            TextAlign.right,
-                                        style: TextStyle(
-                                          fontWeight:
-                                              FontWeight.bold,
-                                          fontSize: 13,
-                                          color: Colors
-                                              .indigo.shade700,
-                                        ),
+
+                                    const SizedBox(height: 4),
+
+                                    // LIGNE 2 : P.U. + MONTANT
+                                    Padding(
+                                      padding:
+                                          const EdgeInsets.only(
+                                              left: 22),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment
+                                                .spaceBetween,
+                                        children: [
+                                          Text(
+                                            'P.U: ${item.product.price.toStringAsFixed(0)} DZ',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors
+                                                  .grey.shade500,
+                                            ),
+                                          ),
+                                          Text(
+                                            '${item.totalPrice.toStringAsFixed(0)} DZ',
+                                            style: TextStyle(
+                                              fontWeight:
+                                                  FontWeight.bold,
+                                              fontSize: 14,
+                                              color: Colors
+                                                  .indigo.shade700,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ],
@@ -693,17 +647,15 @@ class _SalesScreenState extends State<SalesScreen> {
 
                             // ═══ RÉSUMÉ ═══
                             Container(
-                              margin:
-                                  const EdgeInsets.only(top: 8),
-                              padding:
-                                  const EdgeInsets.all(14),
+                              margin: const EdgeInsets.only(top: 8),
+                              padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
                                 color: Colors.indigo.shade50,
                                 borderRadius:
                                     BorderRadius.circular(12),
                                 border: Border.all(
-                                    color: Colors
-                                        .indigo.shade100),
+                                    color:
+                                        Colors.indigo.shade100),
                               ),
                               child: Column(
                                 children: [
@@ -715,15 +667,14 @@ class _SalesScreenState extends State<SalesScreen> {
                                       Text(
                                         'Nombre d\'articles:',
                                         style: TextStyle(
-                                          color: Colors
-                                              .grey.shade600,
+                                          color:
+                                              Colors.grey.shade600,
                                           fontSize: 13,
                                         ),
                                       ),
                                       Text(
                                         '${_cartService.totalQuantity}',
-                                        style:
-                                            const TextStyle(
+                                        style: const TextStyle(
                                           fontWeight:
                                               FontWeight.w600,
                                           fontSize: 13,
@@ -740,15 +691,14 @@ class _SalesScreenState extends State<SalesScreen> {
                                       Text(
                                         'Nombre de lignes:',
                                         style: TextStyle(
-                                          color: Colors
-                                              .grey.shade600,
+                                          color:
+                                              Colors.grey.shade600,
                                           fontSize: 13,
                                         ),
                                       ),
                                       Text(
                                         '${_cartService.itemCount}',
-                                        style:
-                                            const TextStyle(
+                                        style: const TextStyle(
                                           fontWeight:
                                               FontWeight.w600,
                                           fontSize: 13,
@@ -757,8 +707,8 @@ class _SalesScreenState extends State<SalesScreen> {
                                     ],
                                   ),
                                   Divider(
-                                      color: Colors
-                                          .indigo.shade200,
+                                      color:
+                                          Colors.indigo.shade200,
                                       height: 16),
                                   Row(
                                     mainAxisAlignment:
@@ -794,8 +744,7 @@ class _SalesScreenState extends State<SalesScreen> {
                             // ═══ MONTANT REÇU ═══
                             TextField(
                               controller: amountController,
-                              keyboardType:
-                                  TextInputType.number,
+                              keyboardType: TextInputType.number,
                               autofocus: true,
                               style: const TextStyle(
                                   fontSize: 20,
@@ -807,34 +756,29 @@ class _SalesScreenState extends State<SalesScreen> {
                               onChanged: (_) =>
                                   setDialogState(() {}),
                               decoration: InputDecoration(
-                                labelText:
-                                    'Montant reçu (DZ)',
+                                labelText: 'Montant reçu (DZ)',
                                 labelStyle: TextStyle(
                                     color:
                                         Colors.grey.shade600),
                                 prefixIcon: Icon(
                                     Icons.payments_outlined,
-                                    color: Colors
-                                        .indigo.shade400),
+                                    color:
+                                        Colors.indigo.shade400),
                                 filled: true,
                                 fillColor: Colors.white,
-                                enabledBorder:
-                                    OutlineInputBorder(
+                                enabledBorder: OutlineInputBorder(
                                   borderRadius:
-                                      BorderRadius.circular(
-                                          14),
+                                      BorderRadius.circular(14),
                                   borderSide: BorderSide(
-                                      color: Colors
-                                          .grey.shade300),
+                                      color:
+                                          Colors.grey.shade300),
                                 ),
-                                focusedBorder:
-                                    OutlineInputBorder(
+                                focusedBorder: OutlineInputBorder(
                                   borderRadius:
-                                      BorderRadius.circular(
-                                          14),
+                                      BorderRadius.circular(14),
                                   borderSide: BorderSide(
-                                      color: Colors
-                                          .indigo.shade400,
+                                      color:
+                                          Colors.indigo.shade400,
                                       width: 2),
                                 ),
                               ),
@@ -851,32 +795,25 @@ class _SalesScreenState extends State<SalesScreen> {
                                       ? Colors.green.shade50
                                       : Colors.red.shade50,
                                   borderRadius:
-                                      BorderRadius.circular(
-                                          12),
+                                      BorderRadius.circular(12),
                                   border: Border.all(
                                     color: change >= 0
-                                        ? Colors
-                                            .green.shade200
-                                        : Colors
-                                            .red.shade200,
+                                        ? Colors.green.shade200
+                                        : Colors.red.shade200,
                                   ),
                                 ),
                                 child: Row(
                                   mainAxisAlignment:
-                                      MainAxisAlignment
-                                          .center,
+                                      MainAxisAlignment.center,
                                   children: [
                                     Icon(
                                       change >= 0
                                           ? Icons
                                               .check_circle_outline
-                                          : Icons
-                                              .error_outline,
+                                          : Icons.error_outline,
                                       color: change >= 0
-                                          ? Colors
-                                              .green.shade700
-                                          : Colors
-                                              .red.shade700,
+                                          ? Colors.green.shade700
+                                          : Colors.red.shade700,
                                     ),
                                     const SizedBox(width: 10),
                                     Text(
@@ -890,8 +827,7 @@ class _SalesScreenState extends State<SalesScreen> {
                                         color: change >= 0
                                             ? Colors
                                                 .green.shade700
-                                            : Colors
-                                                .red.shade700,
+                                            : Colors.red.shade700,
                                       ),
                                     ),
                                   ],
@@ -943,8 +879,7 @@ class _SalesScreenState extends State<SalesScreen> {
                                         vertical: 14),
                                 shape: RoundedRectangleBorder(
                                   borderRadius:
-                                      BorderRadius.circular(
-                                          14),
+                                      BorderRadius.circular(14),
                                 ),
                                 side: BorderSide(
                                     color:
@@ -966,8 +901,7 @@ class _SalesScreenState extends State<SalesScreen> {
                                   change >= 0 && entered > 0
                                       ? () {
                                           Navigator.pop(ctx);
-                                          _processSale(
-                                              entered);
+                                          _processSale(entered);
                                         }
                                       : null,
                               icon: const Icon(Icons.print,
@@ -976,8 +910,7 @@ class _SalesScreenState extends State<SalesScreen> {
                                 'IMPRIMER',
                                 style: TextStyle(
                                     fontSize: 16,
-                                    fontWeight:
-                                        FontWeight.bold),
+                                    fontWeight: FontWeight.bold),
                               ),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor:
@@ -990,8 +923,7 @@ class _SalesScreenState extends State<SalesScreen> {
                                         vertical: 14),
                                 shape: RoundedRectangleBorder(
                                   borderRadius:
-                                      BorderRadius.circular(
-                                          14),
+                                      BorderRadius.circular(14),
                                 ),
                                 elevation: 3,
                               ),
@@ -1104,15 +1036,13 @@ class _SalesScreenState extends State<SalesScreen> {
               const Text(
                 'Vente Enregistrée !',
                 style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold),
+                    fontSize: 22, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(
                 'Ticket #${sale.id.substring(sale.id.length - 6)}',
                 style: TextStyle(
-                    color: Colors.grey.shade500,
-                    fontSize: 14),
+                    color: Colors.grey.shade500, fontSize: 14),
               ),
               const SizedBox(height: 20),
               Container(
@@ -1153,8 +1083,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     backgroundColor: Colors.indigo.shade700,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                     elevation: 3,
                   ),
@@ -1298,8 +1227,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     Text(
                       'Ma Caisse',
                       style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12),
+                          color: Colors.white70, fontSize: 12),
                     ),
                   ],
                 ),
@@ -1343,8 +1271,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                        color:
-                            Colors.white.withOpacity(0.3)),
+                        color: Colors.white.withOpacity(0.3)),
                   ),
                   child: const Icon(Icons.history_rounded,
                       color: Colors.white, size: 26),
@@ -1363,36 +1290,31 @@ class _SalesScreenState extends State<SalesScreen> {
                     controller: _searchController,
                     focusNode: _searchFocus,
                     onChanged: _onSearchChanged,
-                    style: const TextStyle(
-                        color: Colors.white),
+                    style:
+                        const TextStyle(color: Colors.white),
                     decoration: InputDecoration(
                       hintText:
                           'Rechercher (utilisez % comme *)',
                       hintStyle: TextStyle(
-                          color: Colors.white
-                              .withOpacity(0.5),
+                          color:
+                              Colors.white.withOpacity(0.5),
                           fontSize: 13),
                       prefixIcon: Icon(Icons.search,
-                          color: Colors.white
-                              .withOpacity(0.7)),
-                      suffixIcon:
-                          _searchQuery.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(
-                                      Icons.close,
-                                      color:
-                                          Colors.white70),
-                                  onPressed: () {
-                                    _searchController
-                                        .clear();
-                                    setState(() {
-                                      _searchQuery = '';
-                                      _showSearchResults =
-                                          false;
-                                    });
-                                  },
-                                )
-                              : null,
+                          color:
+                              Colors.white.withOpacity(0.7)),
+                      suffixIcon: _searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.close,
+                                  color: Colors.white70),
+                              onPressed: () {
+                                _searchController.clear();
+                                setState(() {
+                                  _searchQuery = '';
+                                  _showSearchResults = false;
+                                });
+                              },
+                            )
+                          : null,
                       border: OutlineInputBorder(
                         borderRadius:
                             BorderRadius.circular(14),
@@ -1400,8 +1322,7 @@ class _SalesScreenState extends State<SalesScreen> {
                       ),
                       contentPadding:
                           const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14),
+                              horizontal: 16, vertical: 14),
                     ),
                   ),
                 ),
@@ -1418,8 +1339,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                        color:
-                            Colors.white.withOpacity(0.3)),
+                        color: Colors.white.withOpacity(0.3)),
                   ),
                   child: const Icon(
                       Icons.qr_code_scanner,
@@ -1572,8 +1492,7 @@ class _SalesScreenState extends State<SalesScreen> {
           child: _searchResults.isEmpty
               ? Center(
                   child: Column(
-                    mainAxisAlignment:
-                        MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(Icons.search_off,
                           size: 60,
@@ -1587,10 +1506,9 @@ class _SalesScreenState extends State<SalesScreen> {
                       ),
                       const SizedBox(height: 8),
                       Container(
-                        padding:
-                            const EdgeInsets.all(12),
-                        margin: const EdgeInsets
-                            .symmetric(horizontal: 40),
+                        padding: const EdgeInsets.all(12),
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 40),
                         decoration: BoxDecoration(
                           color: Colors.indigo.shade50,
                           borderRadius:
@@ -1600,25 +1518,20 @@ class _SalesScreenState extends State<SalesScreen> {
                           children: [
                             Text(
                               '💡 Astuce : utilisez % comme caractère générique',
-                              textAlign:
-                                  TextAlign.center,
+                              textAlign: TextAlign.center,
                               style: TextStyle(
-                                  color: Colors
-                                      .indigo.shade700,
+                                  color: Colors.indigo.shade700,
                                   fontSize: 12,
-                                  fontWeight:
-                                      FontWeight.w600),
+                                  fontWeight: FontWeight.w600),
                             ),
                             const SizedBox(height: 6),
                             Text(
                               '%cola → Coca-Cola\n'
                               'coca% → Coca-Cola 1L\n'
                               '%col% → contient "col"',
-                              textAlign:
-                                  TextAlign.center,
+                              textAlign: TextAlign.center,
                               style: TextStyle(
-                                  color: Colors
-                                      .indigo.shade500,
+                                  color: Colors.indigo.shade500,
                                   fontSize: 11),
                             ),
                           ],
@@ -1632,12 +1545,10 @@ class _SalesScreenState extends State<SalesScreen> {
                       horizontal: 12),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius:
-                        BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black
-                            .withOpacity(0.08),
+                        color: Colors.black.withOpacity(0.08),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),
@@ -1646,53 +1557,40 @@ class _SalesScreenState extends State<SalesScreen> {
                   child: Column(
                     children: [
                       Container(
-                        padding: const EdgeInsets
-                            .symmetric(
-                            horizontal: 16,
-                            vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 10),
                         decoration: BoxDecoration(
                           color: Colors.grey.shade50,
-                          borderRadius:
-                              const BorderRadius.only(
-                            topLeft:
-                                Radius.circular(16),
-                            topRight:
-                                Radius.circular(16),
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(16),
+                            topRight: Radius.circular(16),
                           ),
                         ),
                         child: Row(
                           children: [
                             Icon(Icons.filter_list,
                                 size: 16,
-                                color: Colors
-                                    .grey.shade500),
+                                color: Colors.grey.shade500),
                             const SizedBox(width: 8),
                             Text(
                               '${_searchResults.length} résultat(s) pour "$_searchQuery"',
                               style: TextStyle(
-                                  color: Colors
-                                      .grey.shade600,
+                                  color: Colors.grey.shade600,
                                   fontSize: 13,
-                                  fontWeight:
-                                      FontWeight.w500),
+                                  fontWeight: FontWeight.w500),
                             ),
                           ],
                         ),
                       ),
                       Expanded(
                         child: ListView.separated(
-                          padding:
-                              const EdgeInsets.symmetric(
-                                  vertical: 4),
-                          itemCount:
-                              _searchResults.length,
-                          separatorBuilder: (_, __) =>
-                              Divider(
-                                  height: 1,
-                                  color: Colors
-                                      .grey.shade100),
-                          itemBuilder:
-                              (context, index) {
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 4),
+                          itemCount: _searchResults.length,
+                          separatorBuilder: (_, __) => Divider(
+                              height: 1,
+                              color: Colors.grey.shade100),
+                          itemBuilder: (context, index) {
                             final product =
                                 _searchResults[index];
                             final inCart = _cartService
@@ -1702,18 +1600,14 @@ class _SalesScreenState extends State<SalesScreen> {
 
                             return ListTile(
                               onTap: () =>
-                                  _selectProduct(
-                                      product),
+                                  _selectProduct(product),
                               leading: Container(
                                 width: 44,
                                 height: 44,
-                                decoration:
-                                    BoxDecoration(
-                                  color: Colors
-                                      .indigo.shade50,
+                                decoration: BoxDecoration(
+                                  color: Colors.indigo.shade50,
                                   borderRadius:
-                                      BorderRadius
-                                          .circular(12),
+                                      BorderRadius.circular(12),
                                 ),
                                 child: const Center(
                                   child: Text('📦',
@@ -1722,18 +1616,15 @@ class _SalesScreenState extends State<SalesScreen> {
                                 ),
                               ),
                               title: _highlightMatch(
-                                  product.name,
-                                  _searchQuery),
+                                  product.name, _searchQuery),
                               subtitle: Text(
                                 '${product.price.toStringAsFixed(0)} DZ  •  '
                                 '${lowStock ? "⚠️" : ""} Stock: ${product.stock}',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: lowStock
-                                      ? Colors.orange
-                                          .shade700
-                                      : Colors
-                                          .grey.shade500,
+                                      ? Colors.orange.shade700
+                                      : Colors.grey.shade500,
                                 ),
                               ),
                               trailing: inCart
@@ -1741,39 +1632,29 @@ class _SalesScreenState extends State<SalesScreen> {
                                       padding:
                                           const EdgeInsets
                                               .symmetric(
-                                              horizontal:
-                                                  10,
-                                              vertical:
-                                                  4),
-                                      decoration:
-                                          BoxDecoration(
+                                              horizontal: 10,
+                                              vertical: 4),
+                                      decoration: BoxDecoration(
                                         color: Colors
-                                            .indigo
-                                            .shade50,
+                                            .indigo.shade50,
                                         borderRadius:
-                                            BorderRadius
-                                                .circular(
-                                                    20),
+                                            BorderRadius.circular(
+                                                20),
                                       ),
                                       child: Text(
                                         '${_cartService.getQuantity(product.id)}x',
                                         style: TextStyle(
-                                            fontSize:
-                                                12,
+                                            fontSize: 12,
                                             color: Colors
-                                                .indigo
-                                                .shade700,
+                                                .indigo.shade700,
                                             fontWeight:
-                                                FontWeight
-                                                    .w600),
+                                                FontWeight.w600),
                                       ),
                                     )
                                   : Icon(
-                                      Icons
-                                          .add_circle_outline,
+                                      Icons.add_circle_outline,
                                       color: Colors
-                                          .indigo
-                                          .shade400),
+                                          .indigo.shade400),
                             );
                           },
                         ),
@@ -1808,8 +1689,7 @@ class _SalesScreenState extends State<SalesScreen> {
                 shape: BoxShape.circle,
               ),
               child: Icon(Icons.shopping_cart_outlined,
-                  size: 50,
-                  color: Colors.indigo.shade200),
+                  size: 50, color: Colors.indigo.shade200),
             ),
             const SizedBox(height: 20),
             Text(
@@ -1825,8 +1705,7 @@ class _SalesScreenState extends State<SalesScreen> {
               'Recherchez un produit ou scannez\nun code-barres pour commencer',
               textAlign: TextAlign.center,
               style: TextStyle(
-                  color: Colors.grey.shade400,
-                  fontSize: 14),
+                  color: Colors.grey.shade400, fontSize: 14),
             ),
             const SizedBox(height: 24),
             OutlinedButton.icon(
@@ -1846,11 +1725,10 @@ class _SalesScreenState extends State<SalesScreen> {
                 padding: const EdgeInsets.symmetric(
                     horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                side: BorderSide(
-                    color: Colors.indigo.shade200),
+                side:
+                    BorderSide(color: Colors.indigo.shade200),
               ),
             ),
           ],
@@ -1861,13 +1739,11 @@ class _SalesScreenState extends State<SalesScreen> {
     return Column(
       children: [
         Padding(
-          padding:
-              const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: Row(
             children: [
               Icon(Icons.receipt_long,
-                  size: 20,
-                  color: Colors.indigo.shade600),
+                  size: 20, color: Colors.indigo.shade600),
               const SizedBox(width: 8),
               Text(
                 'Articles (${_cartService.itemCount})',
@@ -1910,24 +1786,20 @@ class _SalesScreenState extends State<SalesScreen> {
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.red,
-                            foregroundColor:
-                                Colors.white,
+                            foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                                 borderRadius:
                                     BorderRadius.circular(
                                         12)),
                           ),
-                          child:
-                              const Text('Oui, vider'),
+                          child: const Text('Oui, vider'),
                         ),
                       ],
                     ),
                   );
                 },
-                icon: const Icon(
-                    Icons.delete_outline,
-                    size: 18,
-                    color: Colors.red),
+                icon: const Icon(Icons.delete_outline,
+                    size: 18, color: Colors.red),
                 label: Text('Tout effacer',
                     style: TextStyle(
                         color: Colors.red.shade600,
@@ -1992,12 +1864,9 @@ class _SalesScreenState extends State<SalesScreen> {
         ),
         child: Column(
           children: [
-            // ═══════════════════════════════════
-            //     LIGNE 1 : NUMÉRO + NOM + PRIX
-            // ═══════════════════════════════════
+            // LIGNE 1 : NUMÉRO + NOM + PRIX UNITAIRE
             Row(
               children: [
-                // Numéro
                 Container(
                   width: 26,
                   height: 26,
@@ -2017,8 +1886,6 @@ class _SalesScreenState extends State<SalesScreen> {
                   ),
                 ),
                 const SizedBox(width: 10),
-
-                // ✅ NOM DU PRODUIT (prend toute la place disponible)
                 Expanded(
                   child: Text(
                     item.product.name,
@@ -2027,14 +1894,10 @@ class _SalesScreenState extends State<SalesScreen> {
                       fontSize: 14,
                       color: Color(0xFF2D3436),
                     ),
-                    // ✅ PAS DE maxLines ni overflow → texte complet
                     softWrap: true,
                   ),
                 ),
-
                 const SizedBox(width: 8),
-
-                // Prix unitaire
                 Text(
                   '${item.product.price.toStringAsFixed(0)} DZ',
                   style: TextStyle(
@@ -2049,14 +1912,12 @@ class _SalesScreenState extends State<SalesScreen> {
             Divider(height: 1, color: Colors.grey.shade100),
             const SizedBox(height: 8),
 
-            // ═══════════════════════════════════
-            //     LIGNE 2 : CONTRÔLES + TOTAL
-            // ═══════════════════════════════════
+            // LIGNE 2 : QUANTITÉ +/- + TOTAL
             Row(
               children: [
-                // Bouton quantité (tap pour modifier)
                 GestureDetector(
-                  onTap: () => _showEditQuantityDialog(item),
+                  onTap: () =>
+                      _showEditQuantityDialog(item),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 5),
@@ -2074,10 +1935,7 @@ class _SalesScreenState extends State<SalesScreen> {
                     ),
                   ),
                 ),
-
                 const Spacer(),
-
-                // Contrôles +/-
                 Container(
                   decoration: BoxDecoration(
                     color: Colors.grey.shade100,
@@ -2089,8 +1947,8 @@ class _SalesScreenState extends State<SalesScreen> {
                       _qtyButton(
                         icon: Icons.remove,
                         onTap: () {
-                          _cartService
-                              .decreaseQuantity(item.product.id);
+                          _cartService.decreaseQuantity(
+                              item.product.id);
                           setState(() {});
                         },
                       ),
@@ -2107,18 +1965,15 @@ class _SalesScreenState extends State<SalesScreen> {
                       _qtyButton(
                         icon: Icons.add,
                         onTap: () {
-                          _cartService
-                              .increaseQuantity(item.product.id);
+                          _cartService.increaseQuantity(
+                              item.product.id);
                           setState(() {});
                         },
                       ),
                     ],
                   ),
                 ),
-
                 const Spacer(),
-
-                // Total
                 Text(
                   item.formattedTotal,
                   style: TextStyle(
@@ -2163,8 +2018,7 @@ class _SalesScreenState extends State<SalesScreen> {
 
   void _showEditQuantityDialog(dynamic item) {
     final TextEditingController qtyController =
-        TextEditingController(
-            text: '${item.quantity}');
+        TextEditingController(text: '${item.quantity}');
 
     showDialog(
       context: context,
@@ -2173,8 +2027,7 @@ class _SalesScreenState extends State<SalesScreen> {
             borderRadius: BorderRadius.circular(18)),
         title: Text('Modifier quantité',
             style: TextStyle(
-                color: Colors.indigo.shade800,
-                fontSize: 18)),
+                color: Colors.indigo.shade800, fontSize: 18)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -2188,24 +2041,20 @@ class _SalesScreenState extends State<SalesScreen> {
               autofocus: true,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                  fontSize: 30,
-                  fontWeight: FontWeight.bold),
+                  fontSize: 30, fontWeight: FontWeight.bold),
               inputFormatters: [
                 FilteringTextInputFormatter.digitsOnly
               ],
               decoration: InputDecoration(
                 enabledBorder: OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(14),
-                  borderSide: BorderSide(
-                      color: Colors.indigo.shade200),
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide:
+                      BorderSide(color: Colors.indigo.shade200),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(14),
                   borderSide: BorderSide(
-                      color: Colors.indigo.shade400,
-                      width: 2),
+                      color: Colors.indigo.shade400, width: 2),
                 ),
               ),
             ),
@@ -2222,11 +2071,9 @@ class _SalesScreenState extends State<SalesScreen> {
                   int.tryParse(qtyController.text) ?? 0;
               Navigator.pop(ctx);
               if (qty <= 0) {
-                _cartService
-                    .removeProduct(item.product.id);
+                _cartService.removeProduct(item.product.id);
               } else {
-                _cartService
-                    .removeProduct(item.product.id);
+                _cartService.removeProduct(item.product.id);
                 for (int i = 0; i < qty; i++) {
                   _cartService.addProduct(item.product);
                 }
@@ -2237,8 +2084,7 @@ class _SalesScreenState extends State<SalesScreen> {
               backgroundColor: Colors.indigo.shade600,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(12)),
+                  borderRadius: BorderRadius.circular(12)),
             ),
             child: const Text('Valider'),
           ),
@@ -2283,8 +2129,7 @@ class _SalesScreenState extends State<SalesScreen> {
           Row(
             children: [
               Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     '${_cartService.totalQuantity} article(s)',
@@ -2306,8 +2151,7 @@ class _SalesScreenState extends State<SalesScreen> {
               ),
               const Spacer(),
               Column(
-                crossAxisAlignment:
-                    CrossAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
                     'TOTAL',
@@ -2340,8 +2184,7 @@ class _SalesScreenState extends State<SalesScreen> {
               onPressed: _cartService.itemCount > 0
                   ? _showPrintDialog
                   : null,
-              icon: const Icon(Icons.print_rounded,
-                  size: 24),
+              icon: const Icon(Icons.print_rounded, size: 24),
               label: const Text(
                 'IMPRIMER LE TICKET',
                 style: TextStyle(
@@ -2352,18 +2195,13 @@ class _SalesScreenState extends State<SalesScreen> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.green.shade600,
                 foregroundColor: Colors.white,
-                disabledBackgroundColor:
-                    Colors.grey.shade300,
-                disabledForegroundColor:
-                    Colors.grey.shade500,
+                disabledBackgroundColor: Colors.grey.shade300,
+                disabledForegroundColor: Colors.grey.shade500,
                 shape: RoundedRectangleBorder(
-                  borderRadius:
-                      BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                elevation:
-                    _cartService.itemCount > 0 ? 4 : 0,
-                shadowColor:
-                    Colors.green.withOpacity(0.4),
+                elevation: _cartService.itemCount > 0 ? 4 : 0,
+                shadowColor: Colors.green.withOpacity(0.4),
               ),
             ),
           ),
