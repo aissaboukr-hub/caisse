@@ -1,9 +1,13 @@
+# 📄 `lib/screens/users/users_list_screen.dart` — Complet
+
+```dart
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import '../../services/user_service.dart';
 import '../../widgets/user_card.dart';
 import 'user_form_screen.dart';
-import '../products/import_products_screen.dart'; // ← IMPORT AJOUTÉ
+import '../products/import_products_screen.dart';
+import '../history/sales_history_screen.dart'; // ← IMPORT AJOUTÉ
 
 class UsersListScreen extends StatefulWidget {
   const UsersListScreen({super.key});
@@ -72,6 +76,19 @@ class _UsersListScreenState extends State<UsersListScreen> {
         );
       }
     }
+  }
+
+  // =============================================
+  //       NAVIGUER VERS L'HISTORIQUE DES VENTES
+  // =============================================
+
+  void _openSalesHistory() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const SalesHistoryScreen(),
+      ),
+    );
   }
 
   // =============================================
@@ -164,6 +181,15 @@ class _UsersListScreenState extends State<UsersListScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          // ---- BOUTON HISTORIQUE DES VENTES ----
+          Tooltip(
+            message: 'Historique des ventes',
+            child: IconButton(
+              icon: const Icon(Icons.history_rounded),
+              onPressed: _openSalesHistory,
+            ),
+          ),
+
           // ---- BOUTON IMPORT PRODUITS ----
           Tooltip(
             message: 'Importer des produits',
@@ -469,3 +495,21 @@ class _UsersListScreenState extends State<UsersListScreen> {
     );
   }
 }
+```
+
+---
+
+## ✅ Récapitulatif des boutons dans l’AppBar
+
+| Bouton | Icône | Action |
+|---|---|---|
+| 🕒 Historique des ventes | `Icons.history_rounded` | Ouvre `SalesHistoryScreen` |
+| 📥 Importer des produits | `Icons.download_rounded` | Ouvre `ImportProductsScreen` |
+| 👤+ Ajouter un utilisateur | `Icons.person_add_rounded` | Ouvre `UserFormScreen` |
+
+---
+
+**Prochaine étape ?** 🚀  
+1. **📊 Dashboard** — Graphiques et statistiques  
+2. **⚙️ Paramètres** — Configuration de la caisse  
+3. **👤 Profil caissier** — Modifier mot de passe

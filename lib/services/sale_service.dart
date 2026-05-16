@@ -34,7 +34,8 @@ class SaleService extends ChangeNotifier {
   Future<void> _saveSales() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final String json = jsonEncode(_sales.map((s) => s.toMap()).toList());
+      final String json =
+          jsonEncode(_sales.map((s) => s.toMap()).toList());
       await prefs.setString(_storageKey, json);
     } catch (e) {
       debugPrint('Erreur sauvegarde ventes: $e');
@@ -79,26 +80,73 @@ class SaleService extends ChangeNotifier {
   bool get isLoaded => _isLoaded;
   int get totalSales => _sales.length;
 
+  // =============================================
+  //          FILTRES PAR DATE
+  // =============================================
+
+  List<SaleModel> getSalesByDate(DateTime date) {
+    return _sales.where((s) =>
+        s.saleDate.year == date.year &&
+        s.saleDate.month == date.month &&
+        s.saleDate.day == date.day).toList();
+  }
+
+  List<SaleModel> getSalesByDateRange(DateTime start, DateTime end) {
+    return _sales.where((s) =>
+        s.saleDate.isAfter(start.subtract(const Duration(days: 1))) &&
+        s.saleDate.isBefore(end.add(const Duration(days: 1)))).toList();
+  }
+
+  // =============================================
+  //           STATISTIQUES
+  // =============================================
+
   double get todayRevenue {
     final now = DateTime.now();
-    return _sales
-        .where((s) =>
-            s.saleDate.year == now.year &&
-            s.saleDate.month == now.month &&
-            s.saleDate.day == now.day)
+    return getSalesByDate(now)
         .fold(0.0, (sum, s) => sum + s.totalAmount);
   }
 
   int get todaySalesCount {
     final now = DateTime.now();
-    return _sales
-        .where((s) =>
-            s.saleDate.year == now.year &&
-            s.saleDate.month == now.month &&
-            s.saleDate.day == now.day)
-        .length;
+    return getSalesByDate(now).length;
+  }
+
+  int get todayItemsSold {
+    final now = DateTime.now();
+    return getSalesByDate(now)
+        .fold(0, (sum, s) => sum + s.totalItems);
   }
 
   double get totalRevenue =>
       _sales.fold(0.0, (sum, s) => sum + s.totalAmount);
+
+  Map<String, double> get revenueByCashier {
+    final map = <String, double>{};
+    for (final sale in _sales) {
+      map[sale.cashierName] =
+          (map[sale.cashierName] ?? 0) + sale.totalAmount;
+    }
+    return map;
+  }
+
+  // =============================================
+  //          SUPPRIMER UNE VENTE
+  // =============================================
+
+  bool deleteSale(String id) {
+    final index = _sales.indexWhere((s) => s.id == id);
+    if (index == -1) return false;
+    _sales.removeAt(index);
+    _saveSales();
+    notifyListeners();
+    return true;
+  }
+
+  /// Supprimer tout l'historique
+  Future<void> clearAllSales() async {
+    _sales.clear();
+    await _saveSales();
+    notifyListeners();
+  }
 }

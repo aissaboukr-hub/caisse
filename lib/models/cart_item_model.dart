@@ -11,7 +11,26 @@ class CartItemModel {
 
   double get totalPrice => product.price * quantity;
 
-  // ✅ DZ au lieu de FC
   String get formattedTotal => '${totalPrice.toStringAsFixed(0)} DZ';
   String get formattedPrice => '${product.price.toStringAsFixed(0)} DZ';
+
+  Map<String, dynamic> toMap() {
+    return {
+      'productName': product.name,
+      'productPrice': product.price,
+      'quantity': quantity,
+      'total': totalPrice,
+    };
+  }
+
+  factory CartItemModel.fromMap(Map<String, dynamic> map) {
+    return CartItemModel(
+      product: ProductModel(
+        id: '',
+        name: map['productName'] ?? 'Produit inconnu',
+        price: (map['productPrice'] as num?)?.toDouble() ?? 0,
+      ),
+      quantity: (map['quantity'] as num?)?.toInt() ?? 1,
+    );
+  }
 }

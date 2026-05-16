@@ -7,7 +7,7 @@ class SaleModel {
   double totalAmount;
   double amountPaid;
   double change;
-  String paymentMethod; // 'cash', 'card', 'mobile'
+  String paymentMethod;
   DateTime saleDate;
 
   SaleModel({
@@ -27,12 +27,14 @@ class SaleModel {
     return {
       'id': id,
       'cashierName': cashierName,
-      'items': items.map((item) => {
-        'productName': item.product.name,
-        'productPrice': item.product.price,
-        'quantity': item.quantity,
-        'total': item.totalPrice,
-      }).toList(),
+      'items': items
+          .map((item) => {
+                'productName': item.product.name,
+                'productPrice': item.product.price,
+                'quantity': item.quantity,
+                'total': item.totalPrice,
+              })
+          .toList(),
       'totalAmount': totalAmount,
       'amountPaid': amountPaid,
       'change': change,
@@ -42,15 +44,40 @@ class SaleModel {
   }
 
   factory SaleModel.fromMap(Map<String, dynamic> map) {
+    final List<CartItemModel> parsedItems = [];
+
+    if (map['items'] != null) {
+      for (final itemMap in (map['items'] as List)) {
+        parsedItems.add(
+          CartItemModel.fromMap(itemMap as Map<String, dynamic>),
+        );
+      }
+    }
+
     return SaleModel(
-      id: map['id'],
+      id: map['id'] ?? '',
       cashierName: map['cashierName'] ?? 'Inconnu',
-      items: [], // Simplifié pour le stockage
-      totalAmount: (map['totalAmount'] as num).toDouble(),
-      amountPaid: (map['amountPaid'] as num).toDouble(),
-      change: (map['change'] as num).toDouble(),
+      items: parsedItems,
+      totalAmount: (map['totalAmount'] as num?)?.toDouble() ?? 0,
+      amountPaid: (map['amountPaid'] as num?)?.toDouble() ?? 0,
+      change: (map['change'] as num?)?.toDouble() ?? 0,
       paymentMethod: map['paymentMethod'] ?? 'cash',
-      saleDate: DateTime.parse(map['saleDate']),
+      saleDate: map['saleDate'] != null
+          ? DateTime.parse(map['saleDate'])
+          : DateTime.now(),
     );
   }
+
+  String get formattedDate {
+    return '${saleDate.day.toString().padLeft(2, '0')}/'
+        '${saleDate.month.toString().padLeft(2, '0')}/'
+        '${saleDate.year}';
+  }
+
+  String get formattedTime {
+    return '${saleDate.hour.toString().padLeft(2, '0')}:'
+        '${saleDate.minute.toString().padLeft(2, '0')}';
+  }
+
+  String get formattedDateTime => '$formattedDate $formattedTime';
 }
