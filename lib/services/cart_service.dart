@@ -13,7 +13,7 @@ class CartService extends ChangeNotifier {
   double get totalAmount =>
       _items.fold(0.0, (sum, item) => sum + item.totalPrice);
 
-  String get formattedTotal => '${totalAmount.toStringAsFixed(0)} FC';
+  String get formattedTotal => '${totalAmount.toStringAsFixed(0)}';
 
   // =============================================
   //           AJOUTER AU PANIER

@@ -342,6 +342,7 @@ class _SalesScreenState extends State<SalesScreen> {
 
   // =============================================
   //       IMPRIMER / FINALISER LA VENTE
+  //  ⚠️ AFFICHE TOUS LES ARTICLES
   // =============================================
 
   void _showPrintDialog() {
@@ -366,248 +367,475 @@ class _SalesScreenState extends State<SalesScreen> {
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(24),
               ),
+              insetPadding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 24),
               child: Container(
-                padding: const EdgeInsets.all(24),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // ---- EN-TÊTE TICKET ----
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              Colors.indigo.shade600,
-                              Colors.indigo.shade400
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          children: [
-                            const Icon(Icons.receipt_long,
-                                color: Colors.white, size: 36),
-                            const SizedBox(height: 8),
-                            const Text(
-                              'TICKET DE CAISSE',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 2,
-                              ),
-                            ),
-                            Text(
-                              'Date: ${_formatDate(DateTime.now())}',
-                              style: TextStyle(
-                                  color: Colors.white.withOpacity(0.8),
-                                  fontSize: 12),
-                            ),
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.85,
+                  maxWidth: 400,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // ═══════════════════════════════════
+                    //        EN-TÊTE DU TICKET
+                    // ═══════════════════════════════════
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.indigo.shade700,
+                            Colors.indigo.shade500
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // ---- ARTICLES DU TICKET ----
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade50,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.grey.shade200),
+                        borderRadius: const BorderRadius.only(
+                          topLeft: Radius.circular(24),
+                          topRight: Radius.circular(24),
                         ),
+                      ),
+                      child: Column(
+                        children: [
+                          const Icon(Icons.receipt_long,
+                              color: Colors.white, size: 36),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'TICKET DE CAISSE',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Date: ${_formatDate(DateTime.now())}',
+                            style: TextStyle(
+                                color: Colors.white.withOpacity(0.8),
+                                fontSize: 12),
+                          ),
+                          Text(
+                            'Caissier: ${widget.cashierName}',
+                            style: TextStyle(
+                                color: Colors.white.withOpacity(0.7),
+                                fontSize: 12),
+                          ),
+                          const SizedBox(height: 8),
+                          // Compteur d'articles
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 14, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              '${_cartService.totalQuantity} article(s) • ${_cartService.itemCount} ligne(s)',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // ═══════════════════════════════════
+                    //     ZONE SCROLLABLE (TOUS LES ARTICLES)
+                    // ═══════════════════════════════════
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                         child: Column(
                           children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  flex: 1,
-                                  child: Text('QTÉ',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                          color: Colors.grey.shade600)),
-                                ),
-                                Expanded(
-                                  flex: 3,
-                                  child: Text('DÉSIGNATION',
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                          color: Colors.grey.shade600)),
-                                ),
-                                Expanded(
-                                  flex: 2,
-                                  child: Text('MONTANT',
-                                      textAlign: TextAlign.right,
-                                      style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
-                                          color: Colors.grey.shade600)),
-                                ),
-                              ],
+                            const SizedBox(height: 16),
+
+                            // ---- EN-TÊTE TABLEAU ----
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.indigo.shade50,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  SizedBox(
+                                    width: 30,
+                                    child: Text('#',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                            color: Colors.indigo.shade700)),
+                                  ),
+                                  SizedBox(
+                                    width: 35,
+                                    child: Text('QTÉ',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                            color: Colors.indigo.shade700)),
+                                  ),
+                                  Expanded(
+                                    child: Text('DÉSIGNATION',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                            color: Colors.indigo.shade700)),
+                                  ),
+                                  SizedBox(
+                                    width: 70,
+                                    child: Text('P.U.',
+                                        textAlign: TextAlign.right,
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                            color: Colors.indigo.shade700)),
+                                  ),
+                                  SizedBox(
+                                    width: 80,
+                                    child: Text('MONTANT',
+                                        textAlign: TextAlign.right,
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 11,
+                                            color: Colors.indigo.shade700)),
+                                  ),
+                                ],
+                              ),
                             ),
-                            Divider(color: Colors.grey.shade300),
-                            ...(_cartService.items.map((item) {
-                              return Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 4),
+
+                            // ═══════════════════════════════════
+                            //     TOUS LES ARTICLES (UN PAR UN)
+                            // ═══════════════════════════════════
+                            ...List.generate(_cartService.items.length, (index) {
+                              final item = _cartService.items[index];
+                              final isEven = index % 2 == 0;
+
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: isEven
+                                      ? Colors.white
+                                      : Colors.grey.shade50,
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: Colors.grey.shade200,
+                                      width: 0.5,
+                                    ),
+                                  ),
+                                ),
                                 child: Row(
                                   children: [
-                                    Expanded(
-                                      flex: 1,
-                                      child: Text('${item.quantity}',
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.w600)),
+                                    // Numéro
+                                    SizedBox(
+                                      width: 30,
+                                      child: Text(
+                                        '${index + 1}',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade500,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
                                     ),
-                                    Expanded(
-                                      flex: 3,
-                                      child: Text(item.product.name,
-                                          style:
-                                              const TextStyle(fontSize: 14)),
-                                    ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(item.formattedTotal,
-                                          textAlign: TextAlign.right,
+                                    // Quantité
+                                    SizedBox(
+                                      width: 35,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.indigo.shade600,
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                        ),
+                                        child: Text(
+                                          '${item.quantity}',
+                                          textAlign: TextAlign.center,
                                           style: const TextStyle(
-                                              fontWeight: FontWeight.w600)),
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    // Désignation
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            item.product.name,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 13,
+                                              color: Color(0xFF2D3436),
+                                            ),
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    // Prix unitaire
+                                    SizedBox(
+                                      width: 70,
+                                      child: Text(
+                                        '${item.product.price.toStringAsFixed(0)}',
+                                        textAlign: TextAlign.right,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600,
+                                        ),
+                                      ),
+                                    ),
+                                    // Montant total
+                                    SizedBox(
+                                      width: 80,
+                                      child: Text(
+                                        '${item.totalPrice.toStringAsFixed(0)} DZ',
+                                        textAlign: TextAlign.right,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: Colors.indigo.shade700,
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
                               );
-                            })),
-                            Divider(
-                                color: Colors.grey.shade300, thickness: 2),
-                            Row(
-                              children: [
-                                const Expanded(
-                                    flex: 1, child: Text('')),
-                                const Expanded(
-                                  flex: 3,
-                                  child: Text('TOTAL À PAYER',
-                                      style: TextStyle(
+                            }),
+
+                            const SizedBox(height: 2),
+
+                            // ═══════════════════════════════════
+                            //        RÉSUMÉ DU TICKET
+                            // ═══════════════════════════════════
+                            Container(
+                              margin: const EdgeInsets.only(top: 8),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.indigo.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: Colors.indigo.shade100),
+                              ),
+                              child: Column(
+                                children: [
+                                  // Nombre d'articles
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Nombre d\'articles:',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${_cartService.totalQuantity}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Nombre de lignes:',
+                                        style: TextStyle(
+                                          color: Colors.grey.shade600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${_cartService.itemCount}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  Divider(
+                                      color: Colors.indigo.shade200,
+                                      height: 16),
+
+                                  // TOTAL
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        'TOTAL À PAYER:',
+                                        style: TextStyle(
                                           fontWeight: FontWeight.bold,
-                                          fontSize: 15)),
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${_cartService.formattedTotal} DZ',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 20,
+                                          color: Colors.indigo.shade800,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+
+                            const SizedBox(height: 16),
+
+                            // ---- MONTANT REÇU ----
+                            TextField(
+                              controller: amountController,
+                              keyboardType: TextInputType.number,
+                              autofocus: true,
+                              style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold),
+                              inputFormatters: [
+                                FilteringTextInputFormatter.digitsOnly
+                              ],
+                              onChanged: (_) => setDialogState(() {}),
+                              decoration: InputDecoration(
+                                labelText: 'Montant reçu (DZ)',
+                                labelStyle: TextStyle(
+                                    color: Colors.grey.shade600),
+                                prefixIcon: Icon(
+                                    Icons.payments_outlined,
+                                    color: Colors.indigo.shade400),
+                                filled: true,
+                                fillColor: Colors.white,
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(14),
+                                  borderSide: BorderSide(
+                                      color: Colors.grey.shade300),
                                 ),
-                                Expanded(
-                                  flex: 2,
-                                  child: Text(
-                                    _cartService.formattedTotal,
-                                    textAlign: TextAlign.right,
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 18,
-                                      color: Colors.indigo.shade700,
-                                    ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(14),
+                                  borderSide: BorderSide(
+                                      color: Colors.indigo.shade400,
+                                      width: 2),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // ---- MONNAIE ----
+                            if (entered > 0)
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: change >= 0
+                                      ? Colors.green.shade50
+                                      : Colors.red.shade50,
+                                  borderRadius:
+                                      BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: change >= 0
+                                        ? Colors.green.shade200
+                                        : Colors.red.shade200,
                                   ),
                                 ),
-                              ],
+                                child: Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      change >= 0
+                                          ? Icons.check_circle_outline
+                                          : Icons.error_outline,
+                                      color: change >= 0
+                                          ? Colors.green.shade700
+                                          : Colors.red.shade700,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      change >= 0
+                                          ? 'Monnaie à rendre: ${change.toStringAsFixed(0)} DZ'
+                                          : 'Manque: ${(total - entered).toStringAsFixed(0)} DZ',
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: change >= 0
+                                            ? Colors.green.shade700
+                                            : Colors.red.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+
+                            // ---- RACCOURCIS MONTANTS ----
+                            const SizedBox(height: 12),
+                            Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              children: _buildQuickAmountButtons(
+                                  total,
+                                  amountController,
+                                  setDialogState),
                             ),
+
+                            const SizedBox(height: 16),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 20),
+                    ),
 
-                      // ---- MONTANT REÇU ----
-                      TextField(
-                        controller: amountController,
-                        keyboardType: TextInputType.number,
-                        autofocus: true,
-                        style: const TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.bold),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly
+                    // ═══════════════════════════════════
+                    //        BOUTONS FIXES EN BAS
+                    // ═══════════════════════════════════
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 10,
+                            offset: const Offset(0, -3),
+                          ),
                         ],
-                        onChanged: (_) => setDialogState(() {}),
-                        decoration: InputDecoration(
-                          labelText: 'Montant reçu (DZ)',
-                          labelStyle: TextStyle(color: Colors.grey.shade600),
-                          prefixIcon: Icon(Icons.payments_outlined,
-                              color: Colors.indigo.shade400),
-                          filled: true,
-                          fillColor: Colors.white,
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: Colors.grey.shade300),
-                          ),
-                          focusedBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(
-                                color: Colors.indigo.shade400, width: 2),
-                          ),
-                        ),
                       ),
-                      const SizedBox(height: 12),
-
-                      // ---- MONNAIE ----
-                      if (entered > 0)
-                        Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: change >= 0
-                                ? Colors.green.shade50
-                                : Colors.red.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: change >= 0
-                                  ? Colors.green.shade200
-                                  : Colors.red.shade200,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                change >= 0
-                                    ? Icons.check_circle_outline
-                                    : Icons.error_outline,
-                                color: change >= 0
-                                    ? Colors.green.shade700
-                                    : Colors.red.shade700,
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                change >= 0
-                                    ? 'Monnaie: ${change.toStringAsFixed(0)} DZ'
-                                    : 'Manque: ${(total - entered).toStringAsFixed(0)} DZ',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: change >= 0
-                                      ? Colors.green.shade700
-                                      : Colors.red.shade700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                      // ---- RACCOURCIS MONTANTS ----
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: _buildQuickAmountButtons(
-                            total, amountController, setDialogState),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // ---- BOUTONS ----
-                      Row(
+                      child: Row(
                         children: [
+                          // Bouton Annuler
                           Expanded(
                             child: OutlinedButton(
                               onPressed: () => Navigator.pop(ctx),
                               style: OutlinedButton.styleFrom(
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 14),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
+                                  borderRadius:
+                                      BorderRadius.circular(14),
                                 ),
-                                side: BorderSide(color: Colors.grey.shade300),
+                                side: BorderSide(
+                                    color: Colors.grey.shade300),
                               ),
                               child: Text('Annuler',
                                   style: TextStyle(
@@ -616,6 +844,7 @@ class _SalesScreenState extends State<SalesScreen> {
                             ),
                           ),
                           const SizedBox(width: 12),
+                          // Bouton Imprimer
                           Expanded(
                             flex: 2,
                             child: ElevatedButton.icon(
@@ -635,11 +864,13 @@ class _SalesScreenState extends State<SalesScreen> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green.shade600,
                                 foregroundColor: Colors.white,
-                                disabledBackgroundColor: Colors.grey.shade300,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
+                                disabledBackgroundColor:
+                                    Colors.grey.shade300,
+                                padding: const EdgeInsets.symmetric(
+                                    vertical: 14),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
+                                  borderRadius:
+                                      BorderRadius.circular(14),
                                 ),
                                 elevation: 3,
                               ),
@@ -647,8 +878,8 @@ class _SalesScreenState extends State<SalesScreen> {
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             );
