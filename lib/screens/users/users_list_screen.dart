@@ -4,7 +4,7 @@ import '../../services/user_service.dart';
 import '../../widgets/user_card.dart';
 import 'user_form_screen.dart';
 import '../products/import_products_screen.dart';
-import '../history/sales_history_screen.dart'; // ← IMPORT AJOUTÉ
+import '../history/sales_history_screen.dart';
 
 class UsersListScreen extends StatefulWidget {
   const UsersListScreen({super.key});
@@ -17,7 +17,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
   final UserService _userService = UserService();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  String _filterRole = 'all'; // 'all', 'admin', 'caissier'
+  String _filterRole = 'all';
 
   @override
   void dispose() {
@@ -73,19 +73,6 @@ class _UsersListScreenState extends State<UsersListScreen> {
         );
       }
     }
-  }
-
-  // =============================================
-  //       NAVIGUER VERS L'HISTORIQUE DES VENTES
-  // =============================================
-
-  void _openSalesHistory() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const SalesHistoryScreen(),
-      ),
-    );
   }
 
   // =============================================
@@ -159,10 +146,6 @@ class _UsersListScreenState extends State<UsersListScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F6FA),
 
-      // =============================================
-      //                APP BAR
-      // =============================================
-
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.indigo.shade700,
@@ -178,16 +161,23 @@ class _UsersListScreenState extends State<UsersListScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
-          // ---- BOUTON HISTORIQUE DES VENTES ----
+          // 📜 Historique des ventes
           Tooltip(
             message: 'Historique des ventes',
             child: IconButton(
               icon: const Icon(Icons.history_rounded),
-              onPressed: _openSalesHistory,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SalesHistoryScreen(),
+                  ),
+                );
+              },
             ),
           ),
 
-          // ---- BOUTON IMPORT PRODUITS ----
+          // 📥 Importer produits
           Tooltip(
             message: 'Importer des produits',
             child: IconButton(
@@ -196,7 +186,7 @@ class _UsersListScreenState extends State<UsersListScreen> {
             ),
           ),
 
-          // ---- BOUTON AJOUTER UTILISATEUR ----
+          // 👤 Ajouter utilisateur
           Tooltip(
             message: 'Ajouter un utilisateur',
             child: IconButton(
@@ -207,24 +197,12 @@ class _UsersListScreenState extends State<UsersListScreen> {
         ],
       ),
 
-      // =============================================
-      //                 CORPS
-      // =============================================
-
       body: Column(
         children: [
-          // ---- HEADER STATISTIQUES ----
           _buildStatsHeader(),
-
-          // ---- BARRE DE RECHERCHE ----
           _buildSearchBar(),
-
-          // ---- FILTRES ----
           _buildFilterChips(),
-
           const SizedBox(height: 8),
-
-          // ---- LISTE ----
           Expanded(
             child: filteredUsers.isEmpty
                 ? _buildEmptyState()
@@ -249,10 +227,6 @@ class _UsersListScreenState extends State<UsersListScreen> {
           ),
         ],
       ),
-
-      // =============================================
-      //             FLOTTEUR (FAB)
-      // =============================================
 
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _openForm(),

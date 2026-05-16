@@ -75,9 +75,9 @@ class UserService extends ChangeNotifier {
       ),
       UserModel(
         id: '2',
-        fullName: 'Jean Kabila',
-        username: 'jean',
-        password: '5678',
+        fullName: 'Adel Kabila',
+        username: 'adel',
+        password: '12345',
         role: 'caissier',
         phone: '+243 999 888 777',
         isActive: true,
